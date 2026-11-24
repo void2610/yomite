@@ -1,50 +1,81 @@
 /* Yomite 判断キット — スライド25・28・29・31・32・35 の判断UIを再現する部品
    使い方: 公開ページに <link rel="stylesheet" href="/kit/review.css"> を入れ、
-   判断項目を .rv-item で書き、末尾に .rv-copybar と <script src="/kit/review.js"> を置く。 */
+   判断項目を .rv-item で書き、末尾に .rv-copybar と <script src="/kit/review.js"> を置く。
+   色は CSS 変数経由。ライトが既定で、OS がダークモードのときは
+   prefers-color-scheme で変数ごと切り替わる (公開済みページも再公開なしで追従)。
+   赤枠 (#e5484d) は両モード共通で、ダーク側は背景と見出しを赤系に寄せて視認性を保つ。 */
+:root{
+  color-scheme:light dark;
+  --rv-card:#fff; --rv-border:#dfe5ec; --rv-border2:#c3ccd6;
+  --rv-text:#222; --rv-heading:#12294d; --rv-accent:#0e7ea4; --rv-muted:#888;
+  --rv-shadow:rgba(30,60,90,.06);
+  --rv-count-bg:#fdf0f2; --rv-count-color:#c62f35;
+  --rv-decision-bg:#fdf3f4; --rv-decision-h:#a02c30; --rv-plan-border:#e3d7d8;
+  --rv-quote-bg:#eceaf3;
+  --rv-badge-bg:#e8eaee; --rv-badge-color:#444;
+  --rv-mark-bg:#fff0a6;
+  --rv-cmp-now-bg:#eef0f4; --rv-cmp-plan-bg:#eef6fd;
+  --rv-copybar-bg:rgba(246,248,250,.92);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --rv-card:#16222f; --rv-border:#2b3e52; --rv-border2:#38506b;
+    --rv-text:#d9e6f2; --rv-heading:#eaf3fb; --rv-accent:#45bcd8; --rv-muted:#7e93a8;
+    --rv-shadow:rgba(0,0,0,.45);
+    --rv-count-bg:#3d1d22; --rv-count-color:#ff9aa0;
+    --rv-decision-bg:#38161a; --rv-decision-h:#ff9aa0; --rv-plan-border:#5a343a;
+    --rv-quote-bg:#272a3d;
+    --rv-badge-bg:#2a3646; --rv-badge-color:#c3d2e0;
+    --rv-mark-bg:#7a5f10;
+    --rv-cmp-now-bg:#202b3a; --rv-cmp-plan-bg:#14293f;
+    --rv-copybar-bg:rgba(13,20,29,.92);
+  }
+  .rv-ba mark,.rv-item mark{color:#ffe9a0}
+}
 
 /* 判断カード (スライド31) */
-.rv-item{background:#fff;border:1px solid #dfe5ec;border-radius:14px;padding:16px 18px;margin:18px 0;box-shadow:0 2px 10px rgba(30,60,90,.06)}
-.rv-num{color:#0e7ea4;font-size:13px;font-weight:700;letter-spacing:.08em}
-.rv-item h3{margin:2px 0 8px;font-size:19px;color:#12294d}
+.rv-item{background:var(--rv-card);border:1px solid var(--rv-border);border-radius:14px;padding:16px 18px;margin:18px 0;box-shadow:0 2px 10px var(--rv-shadow)}
+.rv-num{color:var(--rv-accent);font-size:13px;font-weight:700;letter-spacing:.08em}
+.rv-item h3{margin:2px 0 8px;font-size:19px;color:var(--rv-heading)}
 .rv-badge{display:inline-block;background:#e5484d;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}
-.rv-badge-count{display:inline-block;background:#fdf0f2;border:1px solid #e5484d;color:#c62f35;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}
-.rv-q{font-weight:700;color:#12294d;margin:12px 0 8px}
+.rv-badge-count{display:inline-block;background:var(--rv-count-bg);border:1px solid #e5484d;color:var(--rv-count-color);font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}
+.rv-q{font-weight:700;color:var(--rv-heading);margin:12px 0 8px}
 .rv-choices{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
-.rv-opt{border:1px solid #c3ccd6;background:#fff;color:#222;border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer}
+.rv-opt{border:1px solid var(--rv-border2);background:var(--rv-card);color:var(--rv-text);border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer}
 .rv-opt.sel{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff;border-color:transparent;font-weight:700}
 .rv-rec{display:inline-block;background:#fdf3c9;color:#7a5b00;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:middle}
 .rv-opt.sel .rv-rec{background:#fff;color:#7a5b00}
-.rv-comment{width:100%;min-height:56px;border:1px solid #c3ccd6;border-radius:10px;padding:9px 11px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box}
-.rv-note{font-size:12px;color:#888;margin-top:6px}
+.rv-comment{width:100%;min-height:56px;border:1px solid var(--rv-border2);border-radius:10px;padding:9px 11px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box;background:var(--rv-card);color:var(--rv-text)}
+.rv-note{font-size:12px;color:var(--rv-muted);margin-top:6px}
 
 /* 赤枠の判断ボックス (スライド28・29) */
-.rv-decision{background:#fdf3f4;border:1.5px solid #e5484d;border-radius:14px;padding:16px 18px;margin:18px 0}
-.rv-decision h3{color:#a02c30;margin:0 0 10px;font-size:17px}
-.rv-plan{background:#fff;border:1px solid #e3d7d8;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}
-.rv-plan b{color:#12294d}
+.rv-decision{background:var(--rv-decision-bg);border:1.5px solid #e5484d;border-radius:14px;padding:16px 18px;margin:18px 0}
+.rv-decision h3{color:var(--rv-decision-h);margin:0 0 10px;font-size:17px}
+.rv-plan{background:var(--rv-card);border:1px solid var(--rv-plan-border);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}
+.rv-plan b{color:var(--rv-heading)}
 
 /* 引用ブロック (スライド29) */
-.rv-quote{background:#eceaf3;border-radius:12px;padding:14px 16px 10px;position:relative;margin:10px 0}
+.rv-quote{background:var(--rv-quote-bg);border-radius:12px;padding:14px 16px 10px;position:relative;margin:10px 0}
 .rv-quote:before{content:"“";position:absolute;top:-6px;left:8px;font-size:44px;color:#7fb6d9}
-.rv-quote .rv-chars{font-size:12px;color:#888;margin-top:6px}
+.rv-quote .rv-chars{font-size:12px;color:var(--rv-muted);margin-top:6px}
 
 /* 修正前後の左右並置 (スライド35) */
 .rv-ba{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
 @media(max-width:640px){.rv-ba{grid-template-columns:1fr}}
-.rv-ba>div{background:#fff;border:1px solid #dfe5ec;border-radius:12px;padding:12px 14px}
+.rv-ba>div{background:var(--rv-card);border:1px solid var(--rv-border);border-radius:12px;padding:12px 14px}
 .rv-ba-badge{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;margin-bottom:8px}
-.rv-before .rv-ba-badge{background:#e8eaee;color:#444}
+.rv-before .rv-ba-badge{background:var(--rv-badge-bg);color:var(--rv-badge-color)}
 .rv-after .rv-ba-badge{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff}
-.rv-ba mark,.rv-item mark{background:#fff0a6;padding:0 2px;border-radius:2px}
-.rv-context{font-size:12px;color:#888;margin:2px 0 8px}
+.rv-ba mark,.rv-item mark{background:var(--rv-mark-bg);padding:0 2px;border-radius:2px}
+.rv-context{font-size:12px;color:var(--rv-muted);margin:2px 0 8px}
 
 /* 比較エリア: いま / 案 (スライド25・31) */
-.rv-cmp-now{background:#eef0f4;border-radius:12px;padding:10px 12px;margin:8px 0}
-.rv-cmp-plan{background:#eef6fd;border:1.5px solid #2478d8;border-radius:12px;padding:10px 12px;margin:8px 0}
-.rv-cmp-label{font-weight:700;color:#12294d;font-size:13px}
-.rv-cmp-label small{color:#888;font-weight:400;margin-left:6px}
+.rv-cmp-now{background:var(--rv-cmp-now-bg);border-radius:12px;padding:10px 12px;margin:8px 0}
+.rv-cmp-plan{background:var(--rv-cmp-plan-bg);border:1.5px solid #2478d8;border-radius:12px;padding:10px 12px;margin:8px 0}
+.rv-cmp-label{font-weight:700;color:var(--rv-heading);font-size:13px}
+.rv-cmp-label small{color:var(--rv-muted);font-weight:400;margin-left:6px}
 
 /* 末尾の一括コピー (スライド32) */
-.rv-copybar{position:sticky;bottom:0;background:rgba(246,248,250,.92);padding:12px 0;text-align:center;backdrop-filter:blur(4px)}
+.rv-copybar{position:sticky;bottom:0;background:var(--rv-copybar-bg);padding:12px 0;text-align:center;backdrop-filter:blur(4px)}
 .rv-copy{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff;border:0;border-radius:999px;padding:13px 28px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(30,90,160,.35)}
-.rv-out{display:none;text-align:left;background:#fff;border:1px solid #dfe5ec;border-radius:10px;padding:12px 14px;margin:10px auto;max-width:640px;white-space:pre-wrap;font-size:14px}
+.rv-out{display:none;text-align:left;background:var(--rv-card);border:1px solid var(--rv-border);border-radius:10px;padding:12px 14px;margin:10px auto;max-width:640px;white-space:pre-wrap;font-size:14px}
