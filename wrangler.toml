@@ -2,14 +2,13 @@ name = "yomite"
 main = "src/worker.js"
 compatibility_date = "2024-11-01"
 
-# D1: `npx wrangler d1 create yomite` で表示される id に置き換えること
+# D1 / R2 は名前だけを指定する。GitHub 連携（Workers Builds）でデプロイすると
+# 現在の wrangler が初回デプロイ時に同名の D1 と R2 を自動で用意する想定。
+# 自動で用意されなかった場合はダッシュボードで同名のものを作ってから再デプロイする。
 [[d1_databases]]
 binding = "DB"
 database_name = "yomite"
-database_id = "REPLACE_ME"
 migrations_dir = "migrations"
-
-# R2: `npx wrangler r2 bucket create yomite-pages` で作成すること
 [[r2_buckets]]
 binding = "PAGES_BUCKET"
 bucket_name = "yomite-pages"

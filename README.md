@@ -34,29 +34,37 @@ AI が作った HTML 報告を「読むためだけ」のサイトです。み�
 | `POST /api/inbox` | Access 前提 | スマホの画面から依頼を1件置く `{body}` |
 | `POST /api/inbox/:id/taken` | `PUBLISH_TOKEN` | 依頼を取り込み済みにする |
 
-## デプロイ手順（Izumi様の Cloudflare アカウントが必要です）
+## デプロイ手順（GitHub 連携 / Workers Builds）
 
-```bash
-cd yomite
-npm install
+手元の端末で wrangler にログインするのではなく、Cloudflare の GitHub 連携でこのリポジトリから直接デプロイします。GitHub へ push するたびに自動でデプロイされます。
 
-# 1. Cloudflare にログイン
-npx wrangler login
+1. Cloudflare ダッシュボード → **Workers & Pages** → **Create** → **Import a repository**（GitHub）を選ぶ
+2. GitHub と連携し、リポジトリ **`void2610/yomite`** を選ぶ
+3. 設定は次のとおりにして **Save and Deploy**
+   - Production branch: `master`
+   - Build command: （空欄）
+   - Deploy command: `npx wrangler deploy`
+4. 初回デプロイが完了すると `yomite.<サブドメイン>.workers.dev` で公開される
 
-# 2. D1 と R2 を作る
-npx wrangler d1 create yomite
-#    → 表示された database_id を wrangler.toml の REPLACE_ME に貼る
-npx wrangler r2 bucket create yomite-pages
+### D1 と R2 の用意
 
-# 3. マイグレーションを本番へ当てる
-npx wrangler d1 migrations apply yomite --remote
+`wrangler.toml` では D1（`yomite`）と R2（`yomite-pages`）を名前だけで指定してあります。現在の wrangler は初回デプロイ時に同名のリソースを自動で用意します。
 
-# 4. 公開用トークンを設定（任意の長い文字列。publish CLI と同じ値を使う）
-npx wrangler secret put PUBLISH_TOKEN
+自動で用意されなかった場合は、ダッシュボードで次を作ってから再デプロイ（GitHub へ push、または Workers Builds の画面から Retry）してください。
 
-# 5. デプロイ
-npx wrangler deploy
-```
+- D1: Workers & Pages → D1 → Create database、名前は `yomite`
+- R2: R2 → Create bucket、名前は `yomite-pages`（R2 の有効化が済んでいない場合は先に有効化）
+
+### マイグレーション（初回のみ）
+
+テーブル作成の SQL は `migrations/0001_init.sql` です。次のどちらかで当ててください。
+
+- Workers Builds の Deploy command を一度だけ `npx wrangler d1 migrations apply yomite --remote && npx wrangler deploy` に変えてデプロイし、終わったら元の `npx wrangler deploy` に戻す
+- D1 のコンソール（ダッシュボード → D1 → `yomite` → Console）で `migrations/0001_init.sql` の内容をそのまま実行する
+
+### 公開用トークン（デプロイ後）
+
+デプロイが済んだら、Worker の **Settings → Variables and Secrets** で Secret `PUBLISH_TOKEN` を追加してください（任意の長い文字列。publish CLI の `YOMITE_TOKEN` と同じ値を使います）。
 
 ### Cloudflare Access を前に置く（推奨）
 
