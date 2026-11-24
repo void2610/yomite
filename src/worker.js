@@ -245,8 +245,8 @@ async function takeInbox(id, request, env) {
 
 // --- 判断キット/レポート書式 (public/ 配下の同名ファイルと同一内容を /kit/ で配信) ---
 const REVIEW_CSS = "/* Yomite 判断キット — スライド25・28・29・31・32・35 の判断UIを再現する部品\n   使い方: 公開ページに <link rel=\"stylesheet\" href=\"/kit/review.css\"> を入れ、\n   判断項目を .rv-item で書き、末尾に .rv-copybar と <script src=\"/kit/review.js\"> を置く。 */\n\n/* 判断カード (スライド31) */\n.rv-item{background:#fff;border:1px solid #dfe5ec;border-radius:14px;padding:16px 18px;margin:18px 0;box-shadow:0 2px 10px rgba(30,60,90,.06)}\n.rv-num{color:#0e7ea4;font-size:13px;font-weight:700;letter-spacing:.08em}\n.rv-item h3{margin:2px 0 8px;font-size:19px;color:#12294d}\n.rv-badge{display:inline-block;background:#e5484d;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}\n.rv-badge-count{display:inline-block;background:#fdf0f2;border:1px solid #e5484d;color:#c62f35;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}\n.rv-q{font-weight:700;color:#12294d;margin:12px 0 8px}\n.rv-choices{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}\n.rv-opt{border:1px solid #c3ccd6;background:#fff;color:#222;border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer}\n.rv-opt.sel{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff;border-color:transparent;font-weight:700}\n.rv-rec{display:inline-block;background:#fdf3c9;color:#7a5b00;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:middle}\n.rv-opt.sel .rv-rec{background:#fff;color:#7a5b00}\n.rv-comment{width:100%;min-height:56px;border:1px solid #c3ccd6;border-radius:10px;padding:9px 11px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box}\n.rv-note{font-size:12px;color:#888;margin-top:6px}\n\n/* 赤枠の判断ボックス (スライド28・29) */\n.rv-decision{background:#fdf3f4;border:1.5px solid #e5484d;border-radius:14px;padding:16px 18px;margin:18px 0}\n.rv-decision h3{color:#a02c30;margin:0 0 10px;font-size:17px}\n.rv-plan{background:#fff;border:1px solid #e3d7d8;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}\n.rv-plan b{color:#12294d}\n\n/* 引用ブロック (スライド29) */\n.rv-quote{background:#eceaf3;border-radius:12px;padding:14px 16px 10px;position:relative;margin:10px 0}\n.rv-quote:before{content:\"“\";position:absolute;top:-6px;left:8px;font-size:44px;color:#7fb6d9}\n.rv-quote .rv-chars{font-size:12px;color:#888;margin-top:6px}\n\n/* 修正前後の左右並置 (スライド35) */\n.rv-ba{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}\n@media(max-width:640px){.rv-ba{grid-template-columns:1fr}}\n.rv-ba>div{background:#fff;border:1px solid #dfe5ec;border-radius:12px;padding:12px 14px}\n.rv-ba-badge{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;margin-bottom:8px}\n.rv-before .rv-ba-badge{background:#e8eaee;color:#444}\n.rv-after .rv-ba-badge{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff}\n.rv-ba mark,.rv-item mark{background:#fff0a6;padding:0 2px;border-radius:2px}\n.rv-context{font-size:12px;color:#888;margin:2px 0 8px}\n\n/* 比較エリア: いま / 案 (スライド25・31) */\n.rv-cmp-now{background:#eef0f4;border-radius:12px;padding:10px 12px;margin:8px 0}\n.rv-cmp-plan{background:#eef6fd;border:1.5px solid #2478d8;border-radius:12px;padding:10px 12px;margin:8px 0}\n.rv-cmp-label{font-weight:700;color:#12294d;font-size:13px}\n.rv-cmp-label small{color:#888;font-weight:400;margin-left:6px}\n\n/* 末尾の一括コピー (スライド32) */\n.rv-copybar{position:sticky;bottom:0;background:rgba(246,248,250,.92);padding:12px 0;text-align:center;backdrop-filter:blur(4px)}\n.rv-copy{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff;border:0;border-radius:999px;padding:13px 28px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(30,90,160,.35)}\n.rv-out{display:none;text-align:left;background:#fff;border:1px solid #dfe5ec;border-radius:10px;padding:12px 14px;margin:10px auto;max-width:640px;white-space:pre-wrap;font-size:14px}\n";
-const REVIEW_JS = "// Yomite 判断キット — スライド29〜33 の判断UIの振る舞い\n// ・各 .rv-item 内の .rv-opt は単一選択。選択中は青グラデーション (CSS 側)。\n// ・data-recommend の付いた選択肢は初期選択される (推奨を反映した状態で見せる)。\n// ・返事をしなければ OK: 未操作の項目は推奨がそのままコピー結果に入る。\n//   推奨のない項目は、選択もコメントも無ければコピーに含まれない。\n// ・「選んだ結果をまとめてコピー」: 選んだ項目とコメントだけを1行ずつ\n//   「質問 選択肢（コメント）」の形でコピーする (スライド33 の形式)。\n(function () {\n  function textOf(el) {\n    var t = \"\";\n    el.childNodes.forEach(function (n) {\n      if (n.nodeType === 3) t += n.textContent;\n      else if (n.nodeType === 1 && !n.classList.contains(\"rv-rec\")) t += n.textContent;\n    });\n    return t.trim();\n  }\n  var items = Array.prototype.slice.call(document.querySelectorAll(\".rv-item\"));\n  items.forEach(function (item) {\n    var opts = Array.prototype.slice.call(item.querySelectorAll(\".rv-opt\"));\n    opts.forEach(function (opt) {\n      if (opt.hasAttribute(\"data-recommend\")) opt.classList.add(\"sel\");\n      opt.addEventListener(\"click\", function () {\n        opts.forEach(function (o) { o.classList.remove(\"sel\"); });\n        opt.classList.add(\"sel\");\n      });\n    });\n  });\n  function collect() {\n    var lines = [];\n    items.forEach(function (item) {\n      var q = item.getAttribute(\"data-q\") || \"\";\n      if (!q) {\n        var h = item.querySelector(\".rv-q,h3\");\n        q = h ? h.textContent.replace(/\\s+/g, \" \").trim() : \"項目\";\n      }\n      var sel = item.querySelector(\".rv-opt.sel\");\n      var selText = sel ? textOf(sel) : \"\";\n      var ta = item.querySelector(\".rv-comment\");\n      var comment = ta ? ta.value.trim() : \"\";\n      if (!selText && !comment) return;\n      var line = q;\n      if (selText) line += \" \" + selText;\n      if (comment) line += \"（\" + comment + \"）\";\n      lines.push(line);\n    });\n    return lines;\n  }\n  var btn = document.querySelector(\".rv-copy\");\n  if (btn) {\n    btn.addEventListener(\"click\", function () {\n      var lines = collect();\n      var text = lines.join(\"\\n\");\n      var out = document.querySelector(\".rv-out\");\n      if (out) { out.style.display = \"block\"; out.textContent = text || \"（選んだ項目がありません）\"; }\n      function done() {\n        var old = btn.textContent;\n        btn.textContent = \"コピーしました ✓ このまま貼ってください\";\n        setTimeout(function () { btn.textContent = old; }, 2600);\n      }\n      if (navigator.clipboard && navigator.clipboard.writeText) {\n        navigator.clipboard.writeText(text).then(done, function () { done(); });\n      } else { done(); }\n    });\n  }\n})();\n";
-const REPORT_CSS = "/* Yomite レポート定型フォーマット — スライド13・17・24 のページ形式\n   使い方: <link rel=\"stylesheet\" href=\"/kit/report.css\"> を入れ、\n   .rpt-num + 見出しで節を作り、.rpt-flow / .rpt-cols / .rpt-decision を使う。 */\nbody{margin:0;font-family:system-ui,-apple-system,\"Hiragino Sans\",sans-serif;background:linear-gradient(160deg,#f4f9fd,#e8f1f8);color:#1c2733;line-height:1.75}\n.rpt{max-width:860px;margin:0 auto;padding:28px 18px 64px}\n.rpt-crumb{color:#0e7ea4;font-size:13px;margin-bottom:6px}\n.rpt-crumb a{color:inherit;text-decoration:underline;text-underline-offset:2px}\n.rpt h1{font-size:27px;color:#12294d;margin:0 0 6px}\n.rpt-sub{color:#445;margin-bottom:14px}\n.rpt-meta{font-size:12px;color:#888;margin-bottom:18px}\n.rpt-toc{background:#fff;border-radius:14px;padding:14px 18px;box-shadow:0 2px 10px rgba(30,60,90,.06);margin-bottom:26px}\n.rpt-toc h2{font-size:13px;color:#666;margin:0 0 8px}\n.rpt-toc ol{margin:0;padding:0;list-style:none}\n.rpt-toc li{margin:4px 0}\n.rpt-toc a{color:#0e7ea4;text-decoration:none;font-weight:600}\n.rpt-toc .n{color:#0e7ea4;font-weight:700;margin-right:8px}\nsection.rpt-sec{margin:34px 0}\n.rpt-num{color:#0e7ea4;font-size:13px;font-weight:700;letter-spacing:.08em}\nsection.rpt-sec>h2{font-size:21px;color:#12294d;margin:2px 0 10px}\n.rpt-flow{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin:14px 0}\n.rpt-flow .box{background:#e8f2fa;border-radius:10px;padding:10px 12px;flex:1;min-width:120px}\n.rpt-flow .box .when{font-size:12px;color:#0e7ea4}\n.rpt-flow .box .what{font-weight:700;color:#12294d}\n.rpt-flow .box .sub{font-size:12px;color:#667}\n.rpt-flow .box.hot{background:linear-gradient(150deg,#0d4d66,#0e7ea4);color:#fff}\n.rpt-flow .box.hot .when,.rpt-flow .box.hot .what,.rpt-flow .box.hot .sub{color:#fff}\n.rpt-flow .arr{align-self:center;color:#0e7ea4;font-weight:700}\n.rpt-cap{text-align:center;font-size:12px;color:#888;margin-top:2px}\n.rpt-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}\n@media(max-width:640px){.rpt-cols{grid-template-columns:1fr}}\n.rpt-panel{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(30,60,90,.06)}\n.rpt-panel h3{background:linear-gradient(90deg,#1295b4,#2478d8);color:#fff;font-size:15px;margin:0;padding:9px 14px}\n.rpt-panel .body{padding:10px 14px;font-size:14px}\n.rpt-decision{background:#fff8d6;border:1.5px solid #e6c34a;border-radius:12px;padding:12px 16px;margin:14px 0}\n.rpt-decision:before{content:\"判断ポイント\";display:inline-block;background:#e6c34a;color:#5c4a00;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;margin-bottom:6px}\ntable{border-collapse:collapse;width:100%;margin:12px 0;background:#fff}\nth{background:#dceefb;color:#12294d;text-align:left;padding:8px 10px;border:1px solid #c9d9e8}\ntd{padding:8px 10px;border:1px solid #d8e2ec;vertical-align:top}\ntd.k{background:linear-gradient(90deg,#e3e9fb,#dceefb);font-weight:700;color:#12294d;white-space:nowrap}\nmark{background:#fff0a6;padding:0 2px;border-radius:2px}\ncode{background:#eef2f6;border-radius:6px;padding:1px 6px;font-size:.92em}\n";
+const REVIEW_JS = "// Yomite 判断キット — スライド29〜33 の判断UIの振る舞い\n// ・各 .rv-item 内の .rv-opt は単一選択。選択中は青グラデーション (CSS 側)。\n// ・data-recommend の付いた選択肢は初期選択される (推奨を反映した状態で見せる)。\n// ・返事をしなければ OK: 未操作の項目は推奨がそのままコピー結果に入る。\n//   推奨のない項目は、選択もコメントも無ければコピーに含まれない。\n// ・「選んだ結果をまとめてコピー」: 選んだ項目とコメントだけを1行ずつ\n//   「質問 選択肢（コメント）」の形でコピーする (スライド33 の形式)。\n(function () {\n  function textOf(el) {\n    var t = \"\";\n    el.childNodes.forEach(function (n) {\n      if (n.nodeType === 3) t += n.textContent;\n      else if (n.nodeType === 1 && !n.classList.contains(\"rv-rec\")) t += n.textContent;\n    });\n    return t.trim();\n  }\n  var items = Array.prototype.slice.call(document.querySelectorAll(\".rv-item\"));\n  items.forEach(function (item) {\n    var opts = Array.prototype.slice.call(item.querySelectorAll(\".rv-opt\"));\n    opts.forEach(function (opt) {\n      if (opt.hasAttribute(\"data-recommend\")) opt.classList.add(\"sel\");\n      opt.addEventListener(\"click\", function () {\n        opts.forEach(function (o) { o.classList.remove(\"sel\"); });\n        opt.classList.add(\"sel\");\n      });\n    });\n  });\n  function collect() {\n    var lines = [];\n    items.forEach(function (item) {\n      var q = item.getAttribute(\"data-q\") || \"\";\n      if (!q) {\n        var h = item.querySelector(\".rv-q,h3\");\n        q = h ? h.textContent.replace(/\\s+/g, \" \").trim() : \"項目\";\n      }\n      var sel = item.querySelector(\".rv-opt.sel\");\n      var selText = sel ? textOf(sel) : \"\";\n      var ta = item.querySelector(\".rv-comment\");\n      var comment = ta ? ta.value.trim() : \"\";\n      if (!selText && !comment) return;\n      var line = q;\n      if (selText) line += \" \" + selText;\n      if (comment) line += \"（\" + comment + \"）\";\n      lines.push(line);\n    });\n    return lines;\n  }\n    document.querySelectorAll(\".rv-opt,.rv-copy\").forEach(function (b) { if (!b.getAttribute(\"type\")) b.setAttribute(\"type\", \"button\"); });\n  var btn = document.querySelector(\".rv-copy\");\n  if (btn) {\n    btn.addEventListener(\"click\", function () {\n      var lines = collect();\n      var out = document.querySelector(\".rv-out\");\n      function flash(msg) {\n        var old = btn.textContent;\n        btn.textContent = msg;\n        setTimeout(function () { btn.textContent = old; }, 2800);\n      }\n      if (!lines.length) {\n        if (out) { out.style.display = \"block\"; out.textContent = \"（選んだ項目がありません。選択肢を押すか、コメントを書いてください）\"; }\n        flash(\"選んだ項目がありません\");\n        return;\n      }\n      var text = lines.join(\"\\n\");\n      if (out) { out.style.display = \"block\"; out.textContent = text; }\n      function ok() { flash(\"コピーしました ✓ このまま貼ってください\"); }\n      function ng() { flash(\"自動コピーできませんでした。下のテキストを選んでコピーしてください\"); if (out) out.scrollIntoView({ block: \"nearest\" }); }\n      if (navigator.clipboard && navigator.clipboard.writeText) {\n        navigator.clipboard.writeText(text).then(ok, ng);\n      } else {\n        var ta = document.createElement(\"textarea\");\n        ta.value = text; ta.style.position = \"fixed\"; ta.style.opacity = \"0\";\n        document.body.appendChild(ta); ta.select();\n        try { if (document.execCommand(\"copy\")) ok(); else ng(); } catch (e) { ng(); }\n        document.body.removeChild(ta);\n      }\n    });\n  }\n\n})();\n";
+const REPORT_CSS = "/* Yomite レポート定型フォーマット — スライド13・17・24 のページ形式\n   使い方: <link rel=\"stylesheet\" href=\"/kit/report.css\"> を入れ、\n   .rpt-num + 見出しで節を作り、.rpt-flow / .rpt-cols / .rpt-decision を使う。 */\nbody{margin:0;font-family:system-ui,-apple-system,\"Hiragino Sans\",sans-serif;background:linear-gradient(160deg,#f4f9fd,#e8f1f8);color:#1c2733;line-height:1.75}\n.rpt{max-width:860px;margin:0 auto;padding:28px 18px 64px}\n.rpt-crumb{color:#0e7ea4;font-size:13px;margin-bottom:6px}\n.rpt-crumb a{color:inherit;text-decoration:underline;text-underline-offset:2px}\n.rpt h1{font-size:27px;color:#12294d;margin:0 0 6px}\n.rpt-sub{color:#445;margin-bottom:14px}\n.rpt-meta{font-size:12px;color:#888;margin-bottom:18px}\n.rpt-toc{background:#fff;border-radius:14px;padding:14px 18px;box-shadow:0 2px 10px rgba(30,60,90,.06);margin-bottom:26px}\n.rpt-toc h2{font-size:13px;color:#666;margin:0 0 8px}\n.rpt-toc ol{margin:0;padding:0;list-style:none}\n.rpt-toc li{margin:4px 0}\n.rpt-toc a{color:#0e7ea4;text-decoration:none;font-weight:600}\n.rpt-toc .n{color:#0e7ea4;font-weight:700;margin-right:8px}\nsection.rpt-sec{margin:34px 0}\n.rpt-num{color:#0e7ea4;font-size:13px;font-weight:700;letter-spacing:.08em}\nsection.rpt-sec>h2{font-size:21px;color:#12294d;margin:2px 0 10px}\n.rpt-flow{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin:14px 0}\n.rpt-flow .box{background:#e8f2fa;border-radius:10px;padding:10px 12px;flex:1;min-width:120px}\n.rpt-flow .box .when{font-size:12px;color:#0e7ea4}\n.rpt-flow .box .what{font-weight:700;color:#12294d}\n.rpt-flow .box .sub{font-size:12px;color:#667}\n.rpt-flow .box.hot{background:linear-gradient(150deg,#0d4d66,#0e7ea4);color:#fff}\n.rpt-flow .box.hot .when,.rpt-flow .box.hot .what,.rpt-flow .box.hot .sub{color:#fff}\n.rpt-flow .arr{align-self:center;color:#0e7ea4;font-weight:700}\n.rpt-cap{text-align:center;font-size:12px;color:#888;margin-top:2px}\n.rpt-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}\n@media(max-width:640px){.rpt-cols{grid-template-columns:1fr}}\n.rpt-panel{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(30,60,90,.06)}\n.rpt-panel h3{background:linear-gradient(90deg,#1295b4,#2478d8);color:#fff;font-size:15px;margin:0;padding:9px 14px}\n.rpt-panel .body{padding:10px 14px;font-size:14px}\n.rpt-decision{background:#fff8d6;border:1.5px solid #e6c34a;border-radius:12px;padding:12px 16px;margin:14px 0}\n.rpt-decision:before{content:\"判断ポイント\";display:inline-block;background:#e6c34a;color:#5c4a00;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;margin-bottom:6px}\ntable{border-collapse:collapse;width:100%;margin:12px 0;background:#fff}\nth{background:#dceefb;color:#12294d;text-align:left;padding:8px 10px;border:1px solid #c9d9e8}\ntd{padding:8px 10px;border:1px solid #d8e2ec;vertical-align:top}\ntd.k{background:linear-gradient(90deg,#e3e9fb,#dceefb);font-weight:700;color:#12294d;white-space:nowrap}\nmark{background:#fff0a6;padding:0 2px;border-radius:2px}\ncode{background:#eef2f6;border-radius:6px;padding:1px 6px;font-size:.92em}\n\n.rpt-foot{margin-top:44px;padding-top:16px;border-top:1px solid #c9d8e4;text-align:center}\n.rpt-back{display:inline-block;color:#0e7ea4;font-weight:700;text-decoration:none;border:1px solid #9fc6dd;border-radius:999px;padding:9px 20px;background:#fff}\n.rpt-back:hover{background:#e8f2fa}\n";
 
 const READER_HTML = `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
@@ -259,6 +259,7 @@ body{margin:0;font-family:system-ui,-apple-system,"Hiragino Sans",sans-serif;bac
 header{position:sticky;top:0;z-index:5;background:#f7fafc;border-bottom:1px solid #d8e2ec;padding:12px 16px 10px}
 .hrow{display:flex;align-items:center;gap:10px;max-width:980px;margin:0 auto}
 .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:19px;color:#12294d}
+a.logo{text-decoration:none;cursor:pointer}
 .logo:before{content:"";width:5px;height:22px;border-radius:3px;background:linear-gradient(180deg,#12a5b4,#2478d8)}
 .hicons{margin-left:auto;display:flex;gap:6px;align-items:center}
 .hbtn{position:relative;border:0;background:transparent;font-size:18px;cursor:pointer;padding:6px;border-radius:9px;color:#334}
@@ -266,7 +267,7 @@ header{position:sticky;top:0;z-index:5;background:#f7fafc;border-bottom:1px soli
 .dot{position:absolute;top:2px;right:2px;width:9px;height:9px;border-radius:50%;background:#f5a623;border:1.5px solid #fff}
 #searchRow{max-width:980px;margin:8px auto 0;display:none}
 #searchRow.open{display:block}
-input[type=search]{width:100%;padding:9px 12px;border-radius:10px;border:1px solid #c3d2df;font-size:15px;background:#fff;color:inherit}
+input[type=search]{width:100%;padding:9px 12px;border-radius:10px;border:1px solid #c3d2df;font-size:16px;background:#fff;color:inherit}
 #chips{max-width:980px;margin:10px auto 0;display:flex;gap:7px;flex-wrap:wrap}
 .chip{border:1px solid #c3d2df;background:#fff;color:#223;border-radius:999px;padding:6px 13px;font-size:13.5px;cursor:pointer}
 .chip.sel{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff;border-color:transparent;font-weight:700}
@@ -289,12 +290,13 @@ main{padding:6px 16px 48px;max-width:980px;margin:0 auto}
 .icobtn.pin.on{filter:none}
 .icobtn.star{color:#b9c6d2}
 .icobtn.star.on{color:#f0a500}
-.prow{display:flex;align-items:baseline;gap:8px;padding:7px 0;border-top:1px solid #eef2f6;text-decoration:none;color:inherit}
-.prow .ud{flex:none;width:8px;height:8px;border-radius:50%;background:#17a2b8;align-self:center}
+.prow{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid #eef2f6}
+.prow .ud{flex:none;width:8px;height:8px;border-radius:50%;background:#17a2b8}
 .prow .ud.read{background:transparent}
-.prow .tt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
-.prow.read .tt{color:#93a3b3}
+.prow a.tt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;color:inherit;text-decoration:none;padding:3px 0}
+.prow.read a.tt{color:#93a3b3}
 .prow .tm{flex:none;font-size:12px;color:#93a3b3}
+.prow .ppin{flex:none}
 .more{display:block;width:100%;text-align:left;border:0;background:transparent;color:#0e7ea4;font-size:13px;padding:7px 0 4px;cursor:pointer}
 .dec{font-size:12.5px;color:#7a5b00;background:#fff6cf;border-radius:8px;padding:6px 9px;margin:7px 0 5px;white-space:pre-wrap}
 section.inbox{margin-top:38px;background:#f7fafc;border:1px solid #d8e2ec;border-radius:16px;padding:16px}
@@ -307,7 +309,7 @@ section.inbox{margin-top:38px;background:#f7fafc;border:1px solid #d8e2ec;border
 .pill{font-size:12px;background:#fff;border:1px solid #c3d2df;border-radius:999px;padding:2px 9px;color:#445}
 .compose{background:#fff;border-radius:14px;padding:12px;box-shadow:0 2px 10px rgba(30,60,90,.06)}
 textarea{width:100%;min-height:74px;padding:10px;border-radius:10px;border:1px solid #d3dee8;font-size:16px;font-family:inherit;resize:vertical}
-select{width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid #d3dee8;font-size:15px;background:#f4f8fb;color:#445}
+select{width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid #d3dee8;font-size:16px;background:#f4f8fb;color:#445}
 .ib-btns{display:flex;gap:9px;margin-top:10px}
 .btn-img{flex:1;border:1px solid #c3d2df;background:#fff;color:#0e7ea4;border-radius:11px;padding:11px;font-size:15px;font-weight:700;cursor:pointer}
 .btn-send{flex:2;border:0;background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff;border-radius:11px;padding:11px;font-size:15px;font-weight:700;cursor:pointer}
@@ -320,13 +322,15 @@ select{width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px soli
 .empty{color:#93a3b3;text-align:center;padding:20px 0;font-size:14px}
 details.done{margin-top:14px;border-top:1px solid #d8e2ec;padding-top:10px}
 details.done summary{cursor:pointer;color:#445;font-weight:600}
-.chipfile{display:inline-block;font-size:12px;background:#e8f2fa;border-radius:999px;padding:2px 9px;margin-top:7px;color:#0e7ea4}
+.chipfile{display:inline-block;font-size:12px;background:#e8f2fa;border:0;border-radius:999px;padding:3px 10px;margin-top:7px;color:#0e7ea4;cursor:pointer;font-family:inherit}
+.ib-back{border:0;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:#334;padding:2px 6px 2px 0}
+.btn-send:disabled{opacity:.55;cursor:default}
 </style></head><body>
 <header>
-<div class="hrow"><div class="logo">Yomite</div>
+<div class="hrow"><a class="logo" href="/" title="トップ（最新の状態で開き直す）">Yomite</a>
 <div class="hicons">
 <button class="hbtn" id="btnSearch" title="検索">🔍</button>
-<button class="hbtn" id="btnAll" title="すべて表示">📄</button>
+<button class="hbtn" id="btnAll" title="絞り込みを解除してすべて表示">↺</button>
 <button class="hbtn" id="btnInbox" title="インボックス">✉️<span class="dot" id="inboxDot" hidden></span></button>
 </div></div>
 <div id="searchRow"><input type="search" id="q" placeholder="検索（タイトル・概要・案件）"></div>
@@ -334,12 +338,12 @@ details.done summary{cursor:pointer;color:#445;font-weight:600}
 </header>
 <main><div id="list">読み込み中…</div>
 <section class="inbox" id="inbox">
-<div class="ib-head"><span>‹</span><span class="t">インボックス</span><button id="ibReload" title="更新">↻</button></div>
+<div class="ib-head"><button class="ib-back" id="ibTop" title="一覧の先頭へ戻る">‹</button><span class="t">インボックス</span><button id="ibReload" title="更新">↻</button></div>
 <div class="ib-sec"><span class="t">Claudeへの依頼</span><span class="line"></span><span class="pill" id="pendCount">0件</span></div>
 <div class="compose">
 <textarea id="inboxBody" placeholder="依頼を1つ書いてください"></textarea>
 <select id="inboxProject"><option value="">プロジェクト名（任意）</option></select>
-<div><span class="chipfile" id="imgName" hidden></span></div>
+<div><button type="button" class="chipfile" id="imgName" hidden title="タップで添付を外す"></button></div>
 <div class="ib-btns">
 <button class="btn-img" id="imgBtn">🖼 画像</button>
 <button class="btn-send" id="inboxSend">頼む →</button>
@@ -354,7 +358,7 @@ details.done summary{cursor:pointer;color:#445;font-weight:600}
 </main>
 <script>
 var listEl=document.getElementById('list'),qEl=document.getElementById('q'),chipsEl=document.getElementById('chips');
-var PAGES=[],MARKS={},chipSel='すべて';
+var PAGES=[],MARKS={},chipSel='すべて',EXP={};
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 var dtf=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',weekday:'short',hour12:false});
 function parts(iso){var o={};dtf.formatToParts(new Date(iso)).forEach(function(p){o[p.type]=p.value});return o}
@@ -376,9 +380,12 @@ function secLabel(k){
 }
 function markOf(proj){return MARKS[proj]||{pinned:0,starred:0}}
 async function setMark(proj,field,val){
-  var m=markOf(proj);m[field]=val;MARKS[proj]=m;
-  await fetch('/api/projects/marks',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({project:proj,pinned:!!m.pinned,starred:!!m.starred})});
+  var prev=markOf(proj);var m={pinned:prev.pinned,starred:prev.starred};m[field]=val;MARKS[proj]=m;
   render();
+  try{
+    var r=await fetch('/api/projects/marks',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({project:proj,pinned:!!m.pinned,starred:!!m.starred})});
+    if(!r.ok)throw new Error(r.status);
+  }catch(e){MARKS[proj]=prev;render();}
 }
 function renderChips(){
   var byProj={};
@@ -401,7 +408,14 @@ function render(){
     if(q&&(p.title+' '+(p.summary||'')+' '+p.project).toLowerCase().indexOf(q)<0)return false;
     return true;
   });
-  if(!pages.length){listEl.innerHTML='<p class="empty">まだページがありません。</p>';return}
+  if(!pages.length){
+    if(!PAGES.length){listEl.innerHTML='<p class="empty">まだページがありません。</p>';}
+    else{
+      listEl.innerHTML='<p class="empty">条件に合うページがありません。</p><button class="more" id="clearFilter" style="text-align:center">絞り込みを解除する</button>';
+      document.getElementById('clearFilter').addEventListener('click',function(){chipSel='すべて';qEl.value='';render()});
+    }
+    return;
+  }
   var secs={};
   pages.forEach(function(p){var k=dayKey(p.created_at);(secs[k]=secs[k]||[]).push(p)});
   var keys=Object.keys(secs).sort().reverse();
@@ -415,16 +429,18 @@ function render(){
       return byProj[b][0].created_at<byProj[a][0].created_at?-1:1;
     });
     var cards=order.map(function(proj){
-      var items=byProj[proj],m=markOf(proj);
+      var items=byProj[proj],m=markOf(proj),ckey=k+'|'+proj;
       var rows=items.map(function(p,i){
-        var row='<a class="prow'+(p.read_at?' read':'')+'" href="/p/'+esc(p.slug)+'" data-slug="'+esc(p.slug)+'">'
+        var row='<div class="prow'+(p.read_at?' read':'')+'">'
           +'<span class="ud'+(p.read_at?' read':'')+'"></span>'
-          +'<span class="tt">'+esc(p.title)+'</span>'
-          +'<span class="tm">'+relTime(p.created_at)+'</span></a>';
+          +'<a class="tt" href="/p/'+esc(p.slug)+'" data-slug="'+esc(p.slug)+'">'+esc(p.title)+'</a>'
+          +'<span class="tm">'+relTime(p.created_at)+'</span>'
+          +'<button class="icobtn pin ppin'+(p.pinned?' on':'')+'" data-pinpage="'+esc(p.slug)+'" title="ページをピン留め">📌</button></div>';
         if(p.decision_points)row+='<div class="dec">⚠ 判断ポイント: '+esc(p.decision_points)+'</div>';
-        return '<div class="'+(i>=4?'extra" style="display:none':'')+'">'+row+'</div>';
+        if(i>=4)return '<div class="extra"'+(EXP[ckey]?'':' style="display:none"')+'>'+row+'</div>';
+        return '<div>'+row+'</div>';
       }).join('');
-      var more=items.length>4?'<button class="more">他 '+(items.length-4)+' 件を表示 ›</button>':'';
+      var more=items.length>4?'<button class="more" data-card="'+esc(ckey)+'">'+(EXP[ckey]?'閉じる':'他 '+(items.length-4)+' 件を表示 ›')+'</button>':'';
       return '<div class="pcard"><div class="ph"><span class="pt">'+esc(proj)+'</span>'
         +'<span class="pc">'+items.length+'件</span>'
         +'<button class="icobtn pin'+(m.pinned?' on':'')+'" data-pinproj="'+esc(proj)+'" title="案件をピン留め">📌</button>'
@@ -433,30 +449,46 @@ function render(){
     }).join('');
     return '<div class="sec-head"><span class="lbl">'+secLabel(k)+'</span><span class="line"></span><span class="cnt">'+order.length+'テーマ・'+ps.length+'件</span></div><div class="grid">'+cards+'</div>';
   }).join('');
-  listEl.querySelectorAll('a[data-slug]').forEach(function(a){a.addEventListener('click',function(){fetch('/api/pages/'+a.dataset.slug+'/read',{method:'POST'})})});
+  listEl.querySelectorAll('a[data-slug]').forEach(function(a){a.addEventListener('click',function(){
+    PAGES.forEach(function(p){if(p.slug===a.dataset.slug&&!p.read_at)p.read_at=new Date().toISOString()});
+    var row=a.closest('.prow');if(row){row.classList.add('read');var ud=row.querySelector('.ud');if(ud)ud.classList.add('read')}
+    fetch('/api/pages/'+a.dataset.slug+'/read',{method:'POST'}).catch(function(){});
+  })});
+  listEl.querySelectorAll('[data-pinpage]').forEach(function(b){b.addEventListener('click',async function(){
+    b.disabled=true;
+    try{var r=await fetch('/api/pages/'+b.dataset.pinpage+'/pin',{method:'POST'});if(!r.ok)throw new Error(r.status);await load();}
+    catch(e){b.disabled=false;}
+  })});
   listEl.querySelectorAll('[data-pinproj]').forEach(function(b){b.addEventListener('click',function(){setMark(b.dataset.pinproj,'pinned',markOf(b.dataset.pinproj).pinned?0:1)})});
   listEl.querySelectorAll('[data-starproj]').forEach(function(b){b.addEventListener('click',function(){setMark(b.dataset.starproj,'starred',markOf(b.dataset.starproj).starred?0:1)})});
-  listEl.querySelectorAll('.more').forEach(function(b){b.addEventListener('click',function(){
-    var card=b.closest('.pcard');var ex=card.querySelectorAll('.extra');var open=ex.length&&ex[0].style.display!=='none';
-    ex.forEach(function(e){e.style.display=open?'none':''});
-    b.textContent=open?'他 '+ex.length+' 件を表示 ›':'閉じる';
+  listEl.querySelectorAll('.more[data-card]').forEach(function(b){b.addEventListener('click',function(){
+    var key=b.dataset.card;var card=b.closest('.pcard');var ex=card.querySelectorAll('.extra');
+    var open=!EXP[key];EXP[key]=open;
+    ex.forEach(function(e){e.style.display=open?'':'none'});
+    b.textContent=open?'閉じる':'他 '+ex.length+' 件を表示 ›';
   })});
 }
 async function load(){
-  var r=await fetch('/api/pages');var d=await r.json();
-  PAGES=d.pages||[];MARKS={};
-  var qp=new URLSearchParams(location.search).get('project');
-  if(qp&&PAGES.some(function(p){return p.project===qp}))chipSel=qp;
-  (d.marks||[]).forEach(function(m){MARKS[m.project]=m});
-  var sel=document.getElementById('inboxProject');
-  var seen={};var opts='<option value="">プロジェクト名（任意）</option>';
-  PAGES.forEach(function(p){if(!seen[p.project]){seen[p.project]=1;opts+='<option>'+esc(p.project)+'</option>'}});
-  var cur=sel.value;sel.innerHTML=opts;sel.value=cur;
-  render();
+  try{
+    var r=await fetch('/api/pages');if(!r.ok)throw new Error(r.status);
+    var d=await r.json();
+    PAGES=d.pages||[];MARKS={};
+    var qp=new URLSearchParams(location.search).get('project');
+    if(qp&&PAGES.some(function(p){return p.project===qp}))chipSel=qp;
+    (d.marks||[]).forEach(function(m){MARKS[m.project]=m});
+    var sel=document.getElementById('inboxProject');
+    var seen={};var opts='<option value="">プロジェクト名（任意）</option>';
+    PAGES.forEach(function(p){if(!seen[p.project]){seen[p.project]=1;opts+='<option>'+esc(p.project)+'</option>'}});
+    var cur=sel.value;sel.innerHTML=opts;sel.value=cur;
+    render();
+  }catch(e){
+    listEl.innerHTML='<p class="empty">読み込みに失敗しました。</p><button class="more" id="retryLoad" style="text-align:center">再読み込み</button>';
+    document.getElementById('retryLoad').addEventListener('click',load);
+  }
 }
 var timer;qEl.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(render,200)});
-document.getElementById('btnSearch').addEventListener('click',function(){var r=document.getElementById('searchRow');r.classList.toggle('open');if(r.classList.contains('open'))qEl.focus()});
-document.getElementById('btnAll').addEventListener('click',function(){chipSel='すべて';qEl.value='';render()});
+document.getElementById('btnSearch').addEventListener('click',function(){var r=document.getElementById('searchRow');var open=r.classList.toggle('open');if(open)qEl.focus();else if(qEl.value){qEl.value='';render()}});
+document.getElementById('btnAll').addEventListener('click',function(){chipSel='すべて';qEl.value='';document.getElementById('searchRow').classList.remove('open');render();window.scrollTo({top:0,behavior:'smooth'})});
 document.getElementById('btnInbox').addEventListener('click',function(){document.getElementById('inbox').scrollIntoView({behavior:'smooth'})});
 /* --- inbox (スライド21) --- */
 var histEl={pend:document.getElementById('pendingList'),done:document.getElementById('doneList')};
@@ -478,9 +510,14 @@ async function loadInboxHistory(){
   }catch(e){/* keep last shown list on transient errors */}
 }
 document.getElementById('ibReload').addEventListener('click',function(){loadInboxHistory();load()});
+document.getElementById('ibTop').addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'})});
+document.getElementById('imgName').addEventListener('click',function(){
+  if(!imgKey)return;
+  imgKey=null;this.hidden=true;document.getElementById('inboxMsg').textContent='添付を外しました';
+});
 document.getElementById('imgBtn').addEventListener('click',function(){document.getElementById('imgFile').click()});
 document.getElementById('imgFile').addEventListener('change',async function(ev){
-  var f=ev.target.files[0];if(!f)return;
+  var f=ev.target.files[0];ev.target.value='';if(!f)return;
   var msg=document.getElementById('inboxMsg');msg.textContent='画像を送っています…';
   var dataUrl=await new Promise(function(res){var fr=new FileReader();fr.onload=function(){res(fr.result)};fr.readAsDataURL(f)});
   var b64=String(dataUrl).split(',')[1]||'';
@@ -490,13 +527,18 @@ document.getElementById('imgFile').addEventListener('change',async function(ev){
   else{msg.textContent='画像の送信に失敗しました';}
 });
 document.getElementById('inboxSend').addEventListener('click',async function(){
+  var btn=this;if(btn.disabled)return;
   var body=document.getElementById('inboxBody').value.trim();var msg=document.getElementById('inboxMsg');
-  if(!body){msg.textContent='本文を書いてください';return}
+  if(!body){msg.textContent='本文を書いてください';document.getElementById('inboxBody').focus();return}
   var payload={body:body,project:document.getElementById('inboxProject').value};
   if(imgKey)payload.image_key=imgKey;
-  var r=await fetch('/api/inbox',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
-  msg.textContent=r.ok?'置きました。下に並びます。':'送信に失敗しました';
-  if(r.ok){document.getElementById('inboxBody').value='';imgKey=null;document.getElementById('imgName').hidden=true;loadInboxHistory();}
+  btn.disabled=true;var oldLabel=btn.textContent;btn.textContent='送っています…';
+  try{
+    var r=await fetch('/api/inbox',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    msg.textContent=r.ok?'置きました。下に並びます。':'送信に失敗しました。もう一度お試しください。';
+    if(r.ok){document.getElementById('inboxBody').value='';imgKey=null;document.getElementById('imgName').hidden=true;loadInboxHistory();}
+  }catch(e){msg.textContent='送信に失敗しました。もう一度お試しください。';}
+  btn.disabled=false;btn.textContent=oldLabel;
 });
 loadInboxHistory();
 setInterval(loadInboxHistory,30000);
@@ -512,13 +554,13 @@ export default {
         return new Response(READER_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
       }
       if (request.method === "GET" && path === "/kit/review.css") {
-        return new Response(REVIEW_CSS, { headers: { "content-type": "text/css; charset=utf-8" } });
+        return new Response(REVIEW_CSS, { headers: { "content-type": "text/css; charset=utf-8", "cache-control": "no-cache" } });
       }
       if (request.method === "GET" && path === "/kit/review.js") {
-        return new Response(REVIEW_JS, { headers: { "content-type": "text/javascript; charset=utf-8" } });
+        return new Response(REVIEW_JS, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" } });
       }
       if (request.method === "GET" && path === "/kit/report.css") {
-        return new Response(REPORT_CSS, { headers: { "content-type": "text/css; charset=utf-8" } });
+        return new Response(REPORT_CSS, { headers: { "content-type": "text/css; charset=utf-8", "cache-control": "no-cache" } });
       }
       if (request.method === "GET" && path === "/api/pages") return listPages(request, env);
       if (request.method === "POST" && path === "/api/pages") return publishPage(request, env);

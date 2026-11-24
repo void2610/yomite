@@ -45,21 +45,36 @@
     });
     return lines;
   }
+    document.querySelectorAll(".rv-opt,.rv-copy").forEach(function (b) { if (!b.getAttribute("type")) b.setAttribute("type", "button"); });
   var btn = document.querySelector(".rv-copy");
   if (btn) {
     btn.addEventListener("click", function () {
       var lines = collect();
-      var text = lines.join("\n");
       var out = document.querySelector(".rv-out");
-      if (out) { out.style.display = "block"; out.textContent = text || "（選んだ項目がありません）"; }
-      function done() {
+      function flash(msg) {
         var old = btn.textContent;
-        btn.textContent = "コピーしました ✓ このまま貼ってください";
-        setTimeout(function () { btn.textContent = old; }, 2600);
+        btn.textContent = msg;
+        setTimeout(function () { btn.textContent = old; }, 2800);
       }
+      if (!lines.length) {
+        if (out) { out.style.display = "block"; out.textContent = "（選んだ項目がありません。選択肢を押すか、コメントを書いてください）"; }
+        flash("選んだ項目がありません");
+        return;
+      }
+      var text = lines.join("\n");
+      if (out) { out.style.display = "block"; out.textContent = text; }
+      function ok() { flash("コピーしました ✓ このまま貼ってください"); }
+      function ng() { flash("自動コピーできませんでした。下のテキストを選んでコピーしてください"); if (out) out.scrollIntoView({ block: "nearest" }); }
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(done, function () { done(); });
-      } else { done(); }
+        navigator.clipboard.writeText(text).then(ok, ng);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        try { if (document.execCommand("copy")) ok(); else ng(); } catch (e) { ng(); }
+        document.body.removeChild(ta);
+      }
     });
   }
+
 })();

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UX・動線の点検と修正</title>
+<link rel="stylesheet" href="/kit/report.css">
+<link rel="stylesheet" href="/kit/review.css">
+<style>th{background:#dceefb}</style>
+</head><body><div class="rpt">
+<div class="rpt-crumb"><a href="/">Yomite</a> ／ UX点検</div>
+<h1>UX・動線の点検と修正</h1>
+<div class="rpt-sub">読み手の動線を端から端まで歩き直し、押せそうで押せない部品・行き止まり・状態が伝わらない操作を19件見つけて、すべて修正し本番で検証しました。</div>
+<div class="rpt-meta">2026-11-24 時点。対象は本番 https://yomite.void2610.workers.dev のリーダーUI、公開ページ、判断キット、インボックス。</div>
+
+<div class="rpt-toc"><h2>目次</h2><ol>
+<li><a href="#s1"><span class="n">01</span>点検した動線</a></li>
+<li><a href="#s2"><span class="n">02</span>見つけた問題と修正（19件）</a></li>
+<li><a href="#s3"><span class="n">03</span>スターについて（判断ポイント）</a></li>
+<li><a href="#s4"><span class="n">04</span>検証結果（実測）</a></li>
+</ol></div>
+
+<section class="rpt-sec" id="s1">
+<div class="rpt-num">01</div>
+<h2>点検した動線</h2>
+<p>見た目ではなく「読み手が実際にたどる順路」を歩きました。トップで未読を見つける→開く→読み終えて戻る、案件チップと検索での絞り込み、ピンとスター、インボックスで依頼を書いて送って状態が変わるまで、公開ページ内の目次と判断キットのコピーまでを通しで確認しています。</p>
+<svg width="100%" height="86" viewBox="0 0 640 86" role="img" aria-label="修正後の基本動線">
+  <rect x="6" y="22" width="140" height="42" rx="10" fill="#e8f2fa"/><text x="76" y="48" text-anchor="middle" font-size="13" fill="#12294d">トップ（一覧）</text>
+  <text x="156" y="49" font-size="15" fill="#0e7ea4">→</text>
+  <rect x="176" y="22" width="140" height="42" rx="10" fill="#e8f2fa"/><text x="246" y="48" text-anchor="middle" font-size="13" fill="#12294d">未読を開く</text>
+  <text x="326" y="49" font-size="15" fill="#0e7ea4">→</text>
+  <rect x="346" y="22" width="140" height="42" rx="10" fill="#e8f2fa"/><text x="416" y="48" text-anchor="middle" font-size="13" fill="#12294d">ページを読む</text>
+  <text x="496" y="49" font-size="15" fill="#0e7ea4">→</text>
+  <rect x="516" y="22" width="118" height="42" rx="10" fill="#0e7ea4"/><text x="575" y="48" text-anchor="middle" font-size="13" fill="#fff">トップへ戻る</text>
+</svg>
+<div class="rpt-cap">最後の「戻る」が無かったのが今回の最大の欠陥でした</div>
+</section>
+
+<section class="rpt-sec" id="s2">
+<div class="rpt-num">02</div>
+<h2>見つけた問題と修正（19件）</h2>
+<table>
+<thead><tr><th style="width:34%">問題</th><th>修正</th></tr></thead>
+<tbody>
+<tr><td class="k">公開ページから一覧へ戻れない</td><td>ブラウザの戻る以外に手段が無く、行き止まりでした。戻り先リンクを持たない既存ページには配信時に右上へ「← Yomite トップへ」のピルを差し込み、テンプレートには末尾の戻るリンクを追加しました。</td></tr>
+<tr><td class="k">404が行き止まり</td><td>「ページが見つかりません」の素のテキストだけでした。トップへ戻るリンク付きのHTMLページに変え、未知のパスにも同じものを返します（APIは従来どおりJSON）。</td></tr>
+<tr><td class="k">ロゴが無反応</td><td>ホームリンクに見えるのにただの文字でした。トップへの実リンクにしました。</td></tr>
+<tr><td class="k">インボックス見出しの「‹」が無反応</td><td>戻るボタンに見える飾りでした。一覧の先頭へ戻るボタンとして実装しました。</td></tr>
+<tr><td class="k">検索を閉じても絞り込みが残る</td><td>検索欄を閉じると入力が残ったまま絞り込みが続き、何が起きているか分かりませんでした。閉じたら検索語を消して全件に戻します。「すべて表示」ボタンも、絵文字の意味が伝わらない問題を直し、検索を閉じて先頭へ戻る動きにそろえました。</td></tr>
+<tr><td class="k">検索0件で「まだページがありません」</td><td>ページが実在しても0件ヒットで同じ文言が出ていました。「条件に合うページがありません」に分け、絞り込み解除ボタンを付けました。</td></tr>
+<tr><td class="k">読み込み失敗で固まる</td><td>一覧の取得に失敗すると「読み込み中…」のまま二度と進みませんでした。失敗表示と再読み込みボタンを付けました。</td></tr>
+<tr><td class="k">ページのピン留めにUIが無い</td><td>APIと並び順はあるのに押す場所が無く、死んだ機能でした。各行にピンボタンを付けました。</td></tr>
+<tr><td class="k">ピン/スターの保存失敗でUIが嘘をつく</td><td>通信に失敗しても付いた表示のままでした。楽観表示→失敗したら元に戻す、に変えました。</td></tr>
+<tr><td class="k">「他N件を表示」の展開が消える</td><td>ピン操作などで再描画されるたびに閉じてしまいました。展開状態を保持します。</td></tr>
+<tr><td class="k">既読ドットが戻るまで変わらない</td><td>開いた直後に既読表示へ切り替わるよう、クリック時点で先に反映します。</td></tr>
+<tr><td class="k">送信ボタンの二度押しで重複投稿</td><td>送信中はボタンを無効化し「送っています…」と表示します。本文が空のときは入力欄へフォーカスを戻します。</td></tr>
+<tr><td class="k">添付画像を外せない</td><td>付けた画像チップをタップすると添付を外せるようにしました。</td></tr>
+<tr><td class="k">同じ画像を再選択できない</td><td>ファイル入力の値を残していたため、同じファイルでは変更イベントが起きませんでした。選択のたびにリセットします。</td></tr>
+<tr><td class="k">コピー失敗でも「コピーしました」</td><td>判断キットのコピーは、失敗しても成功表示でした。失敗時は正直に知らせ、手動コピーの手順を示します。古い環境向けの代替コピーも入れました。</td></tr>
+<tr><td class="k">何も選んでいないのにコピー扱い</td><td>空のコピーを「成功」としていました。選んだ項目が無い場合はコピーせず、選び方を表示します。</td></tr>
+<tr><td class="k">キットのボタンが送信ボタンになりうる</td><td>フォーム内では意図せず送信扱いになる型でした。キット側で type="button" を保証します。</td></tr>
+<tr><td class="k">iPhoneで入力時に画面が拡大する</td><td>検索欄とセレクトが15pxで、iOSの自動ズームが働きました。16pxにしました。</td></tr>
+<tr><td class="k">キットのCSS/JSが古いまま残る</td><td>更新後もエッジキャッシュの古い部品が返る場合がありました。再検証ヘッダ（Cache-Control: no-cache）を付けました。</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="rpt-sec" id="s3">
+<div class="rpt-num">03</div>
+<h2>スターについて</h2>
+<p>スターは「付ける・外す・保持する」までで、スター付きだけに絞り込む機能は付けていません。前回の報告でも判断ポイントとして残した件です。</p>
+<div class="rpt-decision">スターで絞り込みを足すかどうか。足せば「大事な案件だけ見る」ができますが、チップの並びに絞り込み軸が1つ増えます。現状は付け外しと保持のみで、絞り込みは未実装です。</div>
+</section>
+
+<section class="rpt-sec" id="s4">
+<div class="rpt-num">04</div>
+<h2>検証結果（実測）</h2>
+<table>
+<thead><tr><th style="width:34%">確認</th><th>結果</th></tr></thead>
+<tbody>
+<tr><td class="k">トップ / キット配信</td><td>200。ロゴのリンク、戻るボタン、行ピンの部品、展開状態の保持コードが配信物に入っていることを確認</td></tr>
+<tr><td class="k">既存ページへの戻るピル</td><td>戻り先リンクの無い旧ページ（完成報告）にピルが差し込まれ、リンク済みの最新報告には二重に入らないことを確認</td></tr>
+<tr><td class="k">404</td><td>存在しないページ・未知のパスのどちらも、戻るリンク付きHTMLが返ることを確認</td></tr>
+<tr><td class="k">ページのピン留め</td><td>サンプルページで 付ける→一覧に反映→外す→元に戻る、まで実測</td></tr>
+<tr><td class="k">インボックス</td><td>テスト依頼を投稿→「取り込み待ち」で並ぶ→取り込み後に「受付済み」へ変わることを履歴で確認</td></tr>
+<tr><td class="k">キットの鮮度</td><td>Cache-Control: no-cache が返り、最新のCSS（戻るリンクの書式入り）が配信されることを確認</td></tr>
+</tbody>
+</table>
+<p>パンくず自体のリンク化は並行して進められた修正で、本報告のページでも「Yomite」からトップへ戻れます。今回の点検はそれを補う形で、末尾の戻るリンクと旧ページへの差し込みを足しています。</p>
+</section>
+
+<div class="rpt-foot"><a class="rpt-back" href="/">← Yomite トップへ戻る</a></div>
+</div></body></html>

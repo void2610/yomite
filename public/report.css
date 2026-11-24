@@ -39,3 +39,7 @@ td{padding:8px 10px;border:1px solid #d8e2ec;vertical-align:top}
 td.k{background:linear-gradient(90deg,#e3e9fb,#dceefb);font-weight:700;color:#12294d;white-space:nowrap}
 mark{background:#fff0a6;padding:0 2px;border-radius:2px}
 code{background:#eef2f6;border-radius:6px;padding:1px 6px;font-size:.92em}
+
+.rpt-foot{margin-top:44px;padding-top:16px;border-top:1px solid #c9d8e4;text-align:center}
+.rpt-back{display:inline-block;color:#0e7ea4;font-weight:700;text-decoration:none;border:1px solid #9fc6dd;border-radius:999px;padding:9px 20px;background:#fff}
+.rpt-back:hover{background:#e8f2fa}
