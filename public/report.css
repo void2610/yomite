@@ -4,6 +4,7 @@
 body{margin:0;font-family:system-ui,-apple-system,"Hiragino Sans",sans-serif;background:linear-gradient(160deg,#f4f9fd,#e8f1f8);color:#1c2733;line-height:1.75}
 .rpt{max-width:860px;margin:0 auto;padding:28px 18px 64px}
 .rpt-crumb{color:#0e7ea4;font-size:13px;margin-bottom:6px}
+.rpt-crumb a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .rpt h1{font-size:27px;color:#12294d;margin:0 0 6px}
 .rpt-sub{color:#445;margin-bottom:14px}
 .rpt-meta{font-size:12px;color:#888;margin-bottom:18px}
