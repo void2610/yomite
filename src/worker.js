@@ -99,13 +99,59 @@ async function listInbox(request, env) {
   return json({ inbox: results });
 }
 
-async function addInbox(request, env) {
+// Public read: the site is public-read by design, so anyone can see what was sent.
+async function inboxHistory(request, env) {
+  const { results } = await env.DB.prepare(
+    "SELECT id, body, created_at, taken_at FROM inbox ORDER BY created_at DESC, id DESC LIMIT 50"
+  ).all();
+  return json({ inbox: results });
+}
+
+// Instant notification via Cloudflare Email Sending (send_email binding NOTIFY).
+// Destination is Muse's own mailbox so new requests surface without polling.
+// Any failure here must never fail the inbox POST itself — catch and log only.
+const NOTIFY_TO = "yomite@muse.ai";
+const NOTIFY_FROM = "yomite@void2610.dev";
+
+async function notifyInbox(env, item) {
+  try {
+    if (!env.NOTIFY || typeof env.NOTIFY.send !== "function") {
+      console.log("notify skipped: NOTIFY binding not configured");
+      return;
+    }
+    await env.NOTIFY.send({
+      to: NOTIFY_TO,
+      from: NOTIFY_FROM,
+      subject: `[Yomite] インボックス #${item.id}`,
+      text: [
+        `Yomite のインボックスに新しい依頼が届きました。`,
+        ``,
+        `ID: ${item.id}`,
+        `作成日時: ${item.created_at}`,
+        ``,
+        `--- 依頼本文 ---`,
+        item.body,
+      ].join("\n"),
+    });
+  } catch (e) {
+    console.log("notify failed:", e && e.message ? e.message : String(e));
+  }
+}
+
+async function addInbox(request, env, ctx) {
   let body;
   try { body = await request.json(); } catch { return json({ error: "invalid json" }, 400); }
   const text = (body && body.body ? String(body.body) : "").trim();
   if (!text) return json({ error: "body is required" }, 400);
-  const res = await env.DB.prepare("INSERT INTO inbox (body) VALUES (?)").bind(text).run();
-  return json({ ok: true, id: res.meta.last_row_id }, 201);
+  const ins = await env.DB.prepare("INSERT INTO inbox (body) VALUES (?)").bind(text).run();
+  const id = ins.meta.last_row_id;
+  const item = await env.DB.prepare("SELECT id, body, created_at FROM inbox WHERE id = ?").bind(id).first();
+  if (item) {
+    const notify = notifyInbox(env, item);
+    if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(notify);
+    else await notify;
+  }
+  return json({ ok: true, id }, 201);
 }
 
 async function takeInbox(id, request, env) {
@@ -150,7 +196,9 @@ button.send{margin-top:8px;padding:10px 18px;border-radius:10px;border:0;backgro
 <main><div id="list">読み込み中…</div>
 <section class="inbox"><h2>📥 インボックス（スマホから依頼を置く）</h2>
 <textarea id="inboxBody" placeholder="依頼を1つ書いてください。次にMacを開いたときに取り込まれます。"></textarea>
-<button class="send" id="inboxSend">置いておく</button><div class="msg" id="inboxMsg"></div></section>
+<button class="send" id="inboxSend">置いておく</button><div class="msg" id="inboxMsg"></div>
+<h2>📤 送信した依頼</h2>
+<div id="inboxHistory">読み込み中…</div></section>
 </main>
 <script>
 const listEl=document.getElementById('list'),qEl=document.getElementById('q'),badge=document.getElementById('unreadBadge');
@@ -176,18 +224,29 @@ async function load(){
   listEl.querySelectorAll('button[data-pin]').forEach(b=>b.addEventListener('click',async e=>{e.preventDefault();await fetch('/api/pages/'+b.dataset.pin+'/pin',{method:'POST'});load();}));
 }
 let timer; qEl.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(load,250);});
+const histEl=document.getElementById('inboxHistory');
+async function loadInboxHistory(){
+  try{
+    const r=await fetch('/api/inbox/history'); const d=await r.json(); const items=d.inbox||[];
+    if(!items.length){histEl.innerHTML='<p>まだ送信した依頼はありません。</p>';return;}
+    histEl.innerHTML=items.map(i=>'<div class="card"><div style="white-space:pre-wrap">'+esc(i.body)+'</div>'+
+      '<div class="meta">'+esc((i.created_at||'').slice(0,16).replace('T',' '))+' ・ '+(i.taken_at?'✅ 受付済み':'⏳ 取り込み待ち')+'</div></div>').join('');
+  }catch(e){/* keep last shown list on transient errors */}
+}
 document.getElementById('inboxSend').addEventListener('click',async()=>{
   const body=document.getElementById('inboxBody').value.trim(); const msg=document.getElementById('inboxMsg');
   if(!body){msg.textContent='本文を書いてください';return;}
   const r=await fetch('/api/inbox',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({body})});
-  msg.textContent=r.ok?'置きました。Macを開いたときに取り込まれます。':'送信に失敗しました';
-  if(r.ok)document.getElementById('inboxBody').value='';
+  msg.textContent=r.ok?'置きました。下の「送信した依頼」に出ます。':'送信に失敗しました';
+  if(r.ok){document.getElementById('inboxBody').value='';loadInboxHistory();}
 });
+loadInboxHistory();
+setInterval(loadInboxHistory,30000);
 load();
 </script></body></html>`;
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
     try {
@@ -204,8 +263,9 @@ export default {
       if (request.method === "GET" && path.startsWith("/p/")) {
         return servePage(decodeURIComponent(path.slice(3)), env);
       }
+      if (request.method === "GET" && path === "/api/inbox/history") return inboxHistory(request, env);
       if (request.method === "GET" && path === "/api/inbox") return listInbox(request, env);
-      if (request.method === "POST" && path === "/api/inbox") return addInbox(request, env);
+      if (request.method === "POST" && path === "/api/inbox") return addInbox(request, env, ctx);
       const take = path.match(/^\/api\/inbox\/(\d+)\/taken$/);
       if (request.method === "POST" && take) return takeInbox(take[1], request, env);
       return json({ error: "not found" }, 404);

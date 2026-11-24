@@ -13,6 +13,13 @@ migrations_dir = "migrations"
 binding = "PAGES_BUCKET"
 bucket_name = "yomite-pages"
 
+# インボックス新着の即時通知 (Cloudflare Email Sending)。
+# 宛先は Muse 専用メールボックス yomite@muse.ai、送信元は yomite@void2610.dev。
+# 注意: void2610.dev の Email Sending 有効化 (sending subdomain の onboarding) が
+# API 経由で完了するまでは送信は失敗するが、Worker 側で握りつぶすため投稿は成功する。
+[[send_email]]
+name = "NOTIFY"
+
 # PUBLISH_TOKEN はファイルに書かず secret で設定すること:
 #   npx wrangler secret put PUBLISH_TOKEN
 # ローカル開発では .dev.vars に PUBLISH_TOKEN=dev-token と書く (gitignore 済み)。
