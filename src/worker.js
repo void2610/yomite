@@ -1,7 +1,7 @@
 // Yomite — Cloudflare Worker
-// Reader UI (inline) + JSON API. Storage: R2 (HTML files) + D1 (metadata / inbox).
-// Production is meant to sit behind Cloudflare Access; publish & inbox-fetch
-// additionally require the PUBLISH_TOKEN secret (Authorization: Bearer <token>).
+// Reader UI (inline) + JSON API. Storage: R2 (HTML files / inbox images) + D1 (metadata / inbox).
+// UI は講演「認知負荷の減らし方」の HTML共有くん (スライド12・21) の配置に合わせたもの。
+// Publish & inbox-fetch require the PUBLISH_TOKEN secret (Authorization: Bearer <token>).
 // If PUBLISH_TOKEN is not set (local dev), auth checks are bypassed — see README.
 
 function json(data, status = 200) {
@@ -44,7 +44,27 @@ async function listPages(request, env) {
   if (conds.length) sql += " WHERE " + conds.join(" AND ");
   sql += " ORDER BY pinned DESC, created_at DESC";
   const { results } = await env.DB.prepare(sql).bind(...binds).all();
-  return json({ pages: results });
+  let marks = [];
+  try {
+    const m = await env.DB.prepare("SELECT project, pinned, starred FROM project_marks").all();
+    marks = m.results || [];
+  } catch { /* migration 0002 not applied yet */ }
+  return json({ pages: results, marks });
+}
+
+async function setProjectMark(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "invalid json" }, 400); }
+  const project = body && body.project ? String(body.project) : "";
+  if (!project) return json({ error: "project is required" }, 400);
+  const cur = await env.DB.prepare("SELECT pinned, starred FROM project_marks WHERE project = ?").bind(project).first();
+  const pinned = body.pinned !== undefined ? (body.pinned ? 1 : 0) : (cur ? cur.pinned : 0);
+  const starred = body.starred !== undefined ? (body.starred ? 1 : 0) : (cur ? cur.starred : 0);
+  await env.DB.prepare(
+    `INSERT INTO project_marks (project, pinned, starred) VALUES (?, ?, ?)
+     ON CONFLICT(project) DO UPDATE SET pinned=excluded.pinned, starred=excluded.starred`
+  ).bind(project, pinned, starred).run();
+  return json({ ok: true, project, pinned: !!pinned, starred: !!starred });
 }
 
 async function publishPage(request, env) {
@@ -94,20 +114,50 @@ async function togglePin(slug, env) {
 async function listInbox(request, env) {
   if (!checkToken(request, env)) return json({ error: "unauthorized" }, 401);
   const { results } = await env.DB.prepare(
-    "SELECT id, body, created_at, taken_at FROM inbox WHERE taken_at IS NULL ORDER BY created_at ASC"
+    "SELECT id, body, project, image_key, created_at, taken_at FROM inbox WHERE taken_at IS NULL ORDER BY created_at ASC"
   ).all();
   return json({ inbox: results });
 }
 
-// Public read: the site is public-read by design, so anyone can see what was sent.
+// Public read: the site is public-read by Izumi's decision (2026-11-24), so anyone can see what was sent.
 async function inboxHistory(request, env) {
   const { results } = await env.DB.prepare(
-    "SELECT id, body, created_at, taken_at FROM inbox ORDER BY created_at DESC, id DESC LIMIT 50"
+    "SELECT id, body, project, image_key, created_at, taken_at FROM inbox ORDER BY created_at DESC, id DESC LIMIT 50"
   ).all();
   return json({ inbox: results });
 }
 
-// Instant notification via Cloudflare Email Sending (send_email binding NOTIFY).
+// Image attachment for inbox items (スライド21 の「画像」ボタン).
+// Accepts JSON { filename, contentType, data } where data is base64. Stored in R2 under inbox/.
+const IMAGE_EXT = { "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp" };
+async function uploadInboxImage(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "invalid json" }, 400); }
+  const contentType = body && body.contentType ? String(body.contentType) : "";
+  const ext = IMAGE_EXT[contentType];
+  if (!ext) return json({ error: "unsupported image type" }, 400);
+  const data = body && body.data ? String(body.data) : "";
+  if (!data || data.length > 9_000_000) return json({ error: "image missing or too large" }, 400);
+  let bytes;
+  try {
+    const bin = atob(data);
+    bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  } catch { return json({ error: "invalid base64" }, 400); }
+  const key = `inbox/${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+  await env.PAGES_BUCKET.put(key, bytes, { httpMetadata: { contentType } });
+  return json({ ok: true, key }, 201);
+}
+
+async function serveMedia(key, env) {
+  if (!key.startsWith("inbox/")) return new Response("not found", { status: 404 });
+  const obj = await env.PAGES_BUCKET.get(key);
+  if (!obj) return new Response("not found", { status: 404 });
+  const ct = (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream";
+  return new Response(obj.body, { headers: { "content-type": ct } });
+}
+
+// Instant notification via Cloudflare Email (send_email binding NOTIFY).
 // Destination is Muse's own mailbox so new requests surface without polling.
 // Any failure here must never fail the inbox POST itself — catch and log only.
 const NOTIFY_TO = "yomite@muse.ai";
@@ -119,19 +169,20 @@ async function notifyInbox(env, item) {
       console.log("notify skipped: NOTIFY binding not configured");
       return;
     }
+    const lines = [
+      `Yomite のインボックスに新しい依頼が届きました。`,
+      ``,
+      `ID: ${item.id}`,
+      `作成日時: ${item.created_at}`,
+    ];
+    if (item.project) lines.push(`プロジェクト: ${item.project}`);
+    if (item.image_key) lines.push(`画像: https://yomite.void2610.workers.dev/media/${item.image_key}`);
+    lines.push(``, `--- 依頼本文 ---`, item.body);
     await env.NOTIFY.send({
       to: NOTIFY_TO,
       from: NOTIFY_FROM,
       subject: `[Yomite] インボックス #${item.id}`,
-      text: [
-        `Yomite のインボックスに新しい依頼が届きました。`,
-        ``,
-        `ID: ${item.id}`,
-        `作成日時: ${item.created_at}`,
-        ``,
-        `--- 依頼本文 ---`,
-        item.body,
-      ].join("\n"),
+      text: lines.join("\n"),
     });
   } catch (e) {
     console.log("notify failed:", e && e.message ? e.message : String(e));
@@ -143,9 +194,13 @@ async function addInbox(request, env, ctx) {
   try { body = await request.json(); } catch { return json({ error: "invalid json" }, 400); }
   const text = (body && body.body ? String(body.body) : "").trim();
   if (!text) return json({ error: "body is required" }, 400);
-  const ins = await env.DB.prepare("INSERT INTO inbox (body) VALUES (?)").bind(text).run();
+  const project = body && body.project ? String(body.project).slice(0, 80) : "";
+  const imageKey = body && body.image_key && String(body.image_key).startsWith("inbox/") ? String(body.image_key) : null;
+  const ins = await env.DB.prepare(
+    "INSERT INTO inbox (body, project, image_key) VALUES (?, ?, ?)"
+  ).bind(text, project, imageKey).run();
   const id = ins.meta.last_row_id;
-  const item = await env.DB.prepare("SELECT id, body, created_at FROM inbox WHERE id = ?").bind(id).first();
+  const item = await env.DB.prepare("SELECT id, body, project, image_key, created_at FROM inbox WHERE id = ?").bind(id).first();
   if (item) {
     const notify = notifyInbox(env, item);
     if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(notify);
@@ -163,82 +218,258 @@ async function takeInbox(id, request, env) {
   return json({ ok: true, id: Number(id) });
 }
 
+// --- 判断キット/レポート書式 (public/ 配下の同名ファイルと同一内容を /kit/ で配信) ---
+const REVIEW_CSS = "/* Yomite 判断キット — スライド25・28・29・31・32・35 の判断UIを再現する部品\n   使い方: 公開ページに <link rel=\"stylesheet\" href=\"/kit/review.css\"> を入れ、\n   判断項目を .rv-item で書き、末尾に .rv-copybar と <script src=\"/kit/review.js\"> を置く。 */\n\n/* 判断カード (スライド31) */\n.rv-item{background:#fff;border:1px solid #dfe5ec;border-radius:14px;padding:16px 18px;margin:18px 0;box-shadow:0 2px 10px rgba(30,60,90,.06)}\n.rv-num{color:#0e7ea4;font-size:13px;font-weight:700;letter-spacing:.08em}\n.rv-item h3{margin:2px 0 8px;font-size:19px;color:#12294d}\n.rv-badge{display:inline-block;background:#e5484d;color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}\n.rv-badge-count{display:inline-block;background:#fdf0f2;border:1px solid #e5484d;color:#c62f35;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}\n.rv-q{font-weight:700;color:#12294d;margin:12px 0 8px}\n.rv-choices{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}\n.rv-opt{border:1px solid #c3ccd6;background:#fff;color:#222;border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer}\n.rv-opt.sel{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff;border-color:transparent;font-weight:700}\n.rv-rec{display:inline-block;background:#fdf3c9;color:#7a5b00;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:middle}\n.rv-opt.sel .rv-rec{background:#fff;color:#7a5b00}\n.rv-comment{width:100%;min-height:56px;border:1px solid #c3ccd6;border-radius:10px;padding:9px 11px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box}\n.rv-note{font-size:12px;color:#888;margin-top:6px}\n\n/* 赤枠の判断ボックス (スライド28・29) */\n.rv-decision{background:#fdf3f4;border:1.5px solid #e5484d;border-radius:14px;padding:16px 18px;margin:18px 0}\n.rv-decision h3{color:#a02c30;margin:0 0 10px;font-size:17px}\n.rv-plan{background:#fff;border:1px solid #e3d7d8;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}\n.rv-plan b{color:#12294d}\n\n/* 引用ブロック (スライド29) */\n.rv-quote{background:#eceaf3;border-radius:12px;padding:14px 16px 10px;position:relative;margin:10px 0}\n.rv-quote:before{content:\"“\";position:absolute;top:-6px;left:8px;font-size:44px;color:#7fb6d9}\n.rv-quote .rv-chars{font-size:12px;color:#888;margin-top:6px}\n\n/* 修正前後の左右並置 (スライド35) */\n.rv-ba{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}\n@media(max-width:640px){.rv-ba{grid-template-columns:1fr}}\n.rv-ba>div{background:#fff;border:1px solid #dfe5ec;border-radius:12px;padding:12px 14px}\n.rv-ba-badge{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;margin-bottom:8px}\n.rv-before .rv-ba-badge{background:#e8eaee;color:#444}\n.rv-after .rv-ba-badge{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff}\n.rv-ba mark,.rv-item mark{background:#fff0a6;padding:0 2px;border-radius:2px}\n.rv-context{font-size:12px;color:#888;margin:2px 0 8px}\n\n/* 比較エリア: いま / 案 (スライド25・31) */\n.rv-cmp-now{background:#eef0f4;border-radius:12px;padding:10px 12px;margin:8px 0}\n.rv-cmp-plan{background:#eef6fd;border:1.5px solid #2478d8;border-radius:12px;padding:10px 12px;margin:8px 0}\n.rv-cmp-label{font-weight:700;color:#12294d;font-size:13px}\n.rv-cmp-label small{color:#888;font-weight:400;margin-left:6px}\n\n/* 末尾の一括コピー (スライド32) */\n.rv-copybar{position:sticky;bottom:0;background:rgba(246,248,250,.92);padding:12px 0;text-align:center;backdrop-filter:blur(4px)}\n.rv-copy{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff;border:0;border-radius:999px;padding:13px 28px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(30,90,160,.35)}\n.rv-out{display:none;text-align:left;background:#fff;border:1px solid #dfe5ec;border-radius:10px;padding:12px 14px;margin:10px auto;max-width:640px;white-space:pre-wrap;font-size:14px}\n";
+const REVIEW_JS = "// Yomite 判断キット — スライド29〜33 の判断UIの振る舞い\n// ・各 .rv-item 内の .rv-opt は単一選択。選択中は青グラデーション (CSS 側)。\n// ・data-recommend の付いた選択肢は初期選択される (推奨を反映した状態で見せる)。\n// ・返事をしなければ OK: 未操作の項目は推奨がそのままコピー結果に入る。\n//   推奨のない項目は、選択もコメントも無ければコピーに含まれない。\n// ・「選んだ結果をまとめてコピー」: 選んだ項目とコメントだけを1行ずつ\n//   「質問 選択肢（コメント）」の形でコピーする (スライド33 の形式)。\n(function () {\n  function textOf(el) {\n    var t = \"\";\n    el.childNodes.forEach(function (n) {\n      if (n.nodeType === 3) t += n.textContent;\n      else if (n.nodeType === 1 && !n.classList.contains(\"rv-rec\")) t += n.textContent;\n    });\n    return t.trim();\n  }\n  var items = Array.prototype.slice.call(document.querySelectorAll(\".rv-item\"));\n  items.forEach(function (item) {\n    var opts = Array.prototype.slice.call(item.querySelectorAll(\".rv-opt\"));\n    opts.forEach(function (opt) {\n      if (opt.hasAttribute(\"data-recommend\")) opt.classList.add(\"sel\");\n      opt.addEventListener(\"click\", function () {\n        opts.forEach(function (o) { o.classList.remove(\"sel\"); });\n        opt.classList.add(\"sel\");\n      });\n    });\n  });\n  function collect() {\n    var lines = [];\n    items.forEach(function (item) {\n      var q = item.getAttribute(\"data-q\") || \"\";\n      if (!q) {\n        var h = item.querySelector(\".rv-q,h3\");\n        q = h ? h.textContent.replace(/\\s+/g, \" \").trim() : \"項目\";\n      }\n      var sel = item.querySelector(\".rv-opt.sel\");\n      var selText = sel ? textOf(sel) : \"\";\n      var ta = item.querySelector(\".rv-comment\");\n      var comment = ta ? ta.value.trim() : \"\";\n      if (!selText && !comment) return;\n      var line = q;\n      if (selText) line += \" \" + selText;\n      if (comment) line += \"（\" + comment + \"）\";\n      lines.push(line);\n    });\n    return lines;\n  }\n  var btn = document.querySelector(\".rv-copy\");\n  if (btn) {\n    btn.addEventListener(\"click\", function () {\n      var lines = collect();\n      var text = lines.join(\"\\n\");\n      var out = document.querySelector(\".rv-out\");\n      if (out) { out.style.display = \"block\"; out.textContent = text || \"（選んだ項目がありません）\"; }\n      function done() {\n        var old = btn.textContent;\n        btn.textContent = \"コピーしました ✓ このまま貼ってください\";\n        setTimeout(function () { btn.textContent = old; }, 2600);\n      }\n      if (navigator.clipboard && navigator.clipboard.writeText) {\n        navigator.clipboard.writeText(text).then(done, function () { done(); });\n      } else { done(); }\n    });\n  }\n})();\n";
+const REPORT_CSS = "/* Yomite レポート定型フォーマット — スライド13・17・24 のページ形式\n   使い方: <link rel=\"stylesheet\" href=\"/kit/report.css\"> を入れ、\n   .rpt-num + 見出しで節を作り、.rpt-flow / .rpt-cols / .rpt-decision を使う。 */\nbody{margin:0;font-family:system-ui,-apple-system,\"Hiragino Sans\",sans-serif;background:linear-gradient(160deg,#f4f9fd,#e8f1f8);color:#1c2733;line-height:1.75}\n.rpt{max-width:860px;margin:0 auto;padding:28px 18px 64px}\n.rpt-crumb{color:#0e7ea4;font-size:13px;margin-bottom:6px}\n.rpt h1{font-size:27px;color:#12294d;margin:0 0 6px}\n.rpt-sub{color:#445;margin-bottom:14px}\n.rpt-meta{font-size:12px;color:#888;margin-bottom:18px}\n.rpt-toc{background:#fff;border-radius:14px;padding:14px 18px;box-shadow:0 2px 10px rgba(30,60,90,.06);margin-bottom:26px}\n.rpt-toc h2{font-size:13px;color:#666;margin:0 0 8px}\n.rpt-toc ol{margin:0;padding:0;list-style:none}\n.rpt-toc li{margin:4px 0}\n.rpt-toc a{color:#0e7ea4;text-decoration:none;font-weight:600}\n.rpt-toc .n{color:#0e7ea4;font-weight:700;margin-right:8px}\nsection.rpt-sec{margin:34px 0}\n.rpt-num{color:#0e7ea4;font-size:13px;font-weight:700;letter-spacing:.08em}\nsection.rpt-sec>h2{font-size:21px;color:#12294d;margin:2px 0 10px}\n.rpt-flow{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin:14px 0}\n.rpt-flow .box{background:#e8f2fa;border-radius:10px;padding:10px 12px;flex:1;min-width:120px}\n.rpt-flow .box .when{font-size:12px;color:#0e7ea4}\n.rpt-flow .box .what{font-weight:700;color:#12294d}\n.rpt-flow .box .sub{font-size:12px;color:#667}\n.rpt-flow .box.hot{background:linear-gradient(150deg,#0d4d66,#0e7ea4);color:#fff}\n.rpt-flow .box.hot .when,.rpt-flow .box.hot .what,.rpt-flow .box.hot .sub{color:#fff}\n.rpt-flow .arr{align-self:center;color:#0e7ea4;font-weight:700}\n.rpt-cap{text-align:center;font-size:12px;color:#888;margin-top:2px}\n.rpt-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}\n@media(max-width:640px){.rpt-cols{grid-template-columns:1fr}}\n.rpt-panel{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(30,60,90,.06)}\n.rpt-panel h3{background:linear-gradient(90deg,#1295b4,#2478d8);color:#fff;font-size:15px;margin:0;padding:9px 14px}\n.rpt-panel .body{padding:10px 14px;font-size:14px}\n.rpt-decision{background:#fff8d6;border:1.5px solid #e6c34a;border-radius:12px;padding:12px 16px;margin:14px 0}\n.rpt-decision:before{content:\"判断ポイント\";display:inline-block;background:#e6c34a;color:#5c4a00;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;margin-bottom:6px}\ntable{border-collapse:collapse;width:100%;margin:12px 0;background:#fff}\nth{background:#dceefb;color:#12294d;text-align:left;padding:8px 10px;border:1px solid #c9d9e8}\ntd{padding:8px 10px;border:1px solid #d8e2ec;vertical-align:top}\ntd.k{background:linear-gradient(90deg,#e3e9fb,#dceefb);font-weight:700;color:#12294d;white-space:nowrap}\nmark{background:#fff0a6;padding:0 2px;border-radius:2px}\ncode{background:#eef2f6;border-radius:6px;padding:1px 6px;font-size:.92em}\n";
+
 const READER_HTML = `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Yomite</title>
 <style>
-:root{color-scheme:light dark}
-*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,"Hiragino Sans",sans-serif;background:#f6f6f4;color:#1c1c1a}
-@media(prefers-color-scheme:dark){body{background:#17181a;color:#eee}}
-header{position:sticky;top:0;background:inherit;padding:14px 16px 8px;border-bottom:1px solid #8883}
-h1{font-size:20px;margin:0 0 8px} .badge{background:#d33;color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;vertical-align:middle}
-input[type=search]{width:100%;padding:10px;border-radius:10px;border:1px solid #8886;font-size:16px;background:transparent;color:inherit}
-main{padding:12px 16px 40px;max-width:760px;margin:0 auto}
-h2{font-size:15px;margin:22px 0 8px;color:#666} @media(prefers-color-scheme:dark){h2{color:#aaa}}
-.card{display:block;background:#fff;border:1px solid #8883;border-radius:12px;padding:12px 14px;margin:8px 0;text-decoration:none;color:inherit}
-@media(prefers-color-scheme:dark){.card{background:#22242a}}
-.card .t{font-weight:700;font-size:16px} .card .s{font-size:13px;color:#666;margin-top:4px}
-.card .meta{font-size:12px;color:#999;margin-top:6px}
-.unread{border-left:5px solid #2b7fff}
-.decision{background:#fff3cd;border:1px solid #e6c34a;color:#5c4a00;border-radius:8px;padding:8px 10px;font-size:13px;margin-top:8px;white-space:pre-wrap}
-@media(prefers-color-scheme:dark){.decision{background:#4a3f10;color:#ffe98a;border-color:#8a7420}}
-.row{display:flex;gap:8px;align-items:flex-start}.grow{flex:1}
-button.pin{border:1px solid #8886;background:transparent;color:inherit;border-radius:8px;padding:4px 8px;font-size:13px;cursor:pointer}
-button.pin.on{background:#ffb340;color:#222}
-section.inbox{margin-top:32px;border-top:1px solid #8883;padding-top:16px}
-textarea{width:100%;min-height:90px;padding:10px;border-radius:10px;border:1px solid #8886;font-size:16px;background:transparent;color:inherit}
-button.send{margin-top:8px;padding:10px 18px;border-radius:10px;border:0;background:#2b7fff;color:#fff;font-size:15px;cursor:pointer}
-.msg{font-size:13px;color:#2b7fff;margin-top:6px}
+:root{color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Hiragino Sans",sans-serif;background:#eef3f7;color:#1c2733}
+header{position:sticky;top:0;z-index:5;background:#f7fafc;border-bottom:1px solid #d8e2ec;padding:12px 16px 10px}
+.hrow{display:flex;align-items:center;gap:10px;max-width:980px;margin:0 auto}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:19px;color:#12294d}
+.logo:before{content:"";width:5px;height:22px;border-radius:3px;background:linear-gradient(180deg,#12a5b4,#2478d8)}
+.hicons{margin-left:auto;display:flex;gap:6px;align-items:center}
+.hbtn{position:relative;border:0;background:transparent;font-size:18px;cursor:pointer;padding:6px;border-radius:9px;color:#334}
+.hbtn:hover{background:#e2ecf4}
+.dot{position:absolute;top:2px;right:2px;width:9px;height:9px;border-radius:50%;background:#f5a623;border:1.5px solid #fff}
+#searchRow{max-width:980px;margin:8px auto 0;display:none}
+#searchRow.open{display:block}
+input[type=search]{width:100%;padding:9px 12px;border-radius:10px;border:1px solid #c3d2df;font-size:15px;background:#fff;color:inherit}
+#chips{max-width:980px;margin:10px auto 0;display:flex;gap:7px;flex-wrap:wrap}
+.chip{border:1px solid #c3d2df;background:#fff;color:#223;border-radius:999px;padding:6px 13px;font-size:13.5px;cursor:pointer}
+.chip.sel{background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff;border-color:transparent;font-weight:700}
+.chip .rec{font-size:11px;font-weight:700;margin-left:5px;color:#5b83a6}
+.chip .rec.today{color:#c9930a}
+.chip.sel .rec{color:#ffe9a8}
+main{padding:6px 16px 48px;max-width:980px;margin:0 auto}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin:24px 0 10px}
+.sec-head .lbl{font-weight:700;color:#12294d}
+.sec-head .line{flex:1;border-top:1px solid #c9d8e4}
+.sec-head .cnt{font-size:12px;color:#7d8fa1}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}}
+.pcard{background:#fff;border-radius:14px;padding:13px 15px 9px;box-shadow:0 2px 10px rgba(30,60,90,.07)}
+.pcard .ph{display:flex;align-items:flex-start;gap:7px}
+.pcard .pt{font-weight:800;color:#12294d;font-size:15.5px;flex:1;line-height:1.4}
+.pcard .pc{font-size:12px;color:#8a9bab;white-space:nowrap;margin-top:2px}
+.icobtn{border:0;background:transparent;cursor:pointer;font-size:15px;padding:2px 3px;line-height:1}
+.icobtn.pin{filter:grayscale(1) opacity(.45)}
+.icobtn.pin.on{filter:none}
+.icobtn.star{color:#b9c6d2}
+.icobtn.star.on{color:#f0a500}
+.prow{display:flex;align-items:baseline;gap:8px;padding:7px 0;border-top:1px solid #eef2f6;text-decoration:none;color:inherit}
+.prow .ud{flex:none;width:8px;height:8px;border-radius:50%;background:#17a2b8;align-self:center}
+.prow .ud.read{background:transparent}
+.prow .tt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.prow.read .tt{color:#93a3b3}
+.prow .tm{flex:none;font-size:12px;color:#93a3b3}
+.more{display:block;width:100%;text-align:left;border:0;background:transparent;color:#0e7ea4;font-size:13px;padding:7px 0 4px;cursor:pointer}
+.dec{font-size:12.5px;color:#7a5b00;background:#fff6cf;border-radius:8px;padding:6px 9px;margin:7px 0 5px;white-space:pre-wrap}
+section.inbox{margin-top:38px;background:#f7fafc;border:1px solid #d8e2ec;border-radius:16px;padding:16px}
+.ib-head{display:flex;align-items:center;gap:8px}
+.ib-head .t{font-weight:800;color:#12294d;font-size:17px}
+.ib-head button{margin-left:auto;border:0;background:transparent;font-size:17px;cursor:pointer;color:#334}
+.ib-sec{display:flex;align-items:center;gap:10px;margin:14px 0 8px}
+.ib-sec .t{font-weight:700;color:#12294d}
+.ib-sec .line{flex:1;border-top:1px solid #d8e2ec}
+.pill{font-size:12px;background:#fff;border:1px solid #c3d2df;border-radius:999px;padding:2px 9px;color:#445}
+.compose{background:#fff;border-radius:14px;padding:12px;box-shadow:0 2px 10px rgba(30,60,90,.06)}
+textarea{width:100%;min-height:74px;padding:10px;border-radius:10px;border:1px solid #d3dee8;font-size:16px;font-family:inherit;resize:vertical}
+select{width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid #d3dee8;font-size:15px;background:#f4f8fb;color:#445}
+.ib-btns{display:flex;gap:9px;margin-top:10px}
+.btn-img{flex:1;border:1px solid #c3d2df;background:#fff;color:#0e7ea4;border-radius:11px;padding:11px;font-size:15px;font-weight:700;cursor:pointer}
+.btn-send{flex:2;border:0;background:linear-gradient(90deg,#2478d8,#12a5b4);color:#fff;border-radius:11px;padding:11px;font-size:15px;font-weight:700;cursor:pointer}
+.ib-note{font-size:12px;color:#8a9bab;margin-top:9px}
+.msg{font-size:13px;color:#2478d8;margin-top:6px}
+.ib-item{background:#fff;border:1px solid #e3ebf2;border-radius:11px;padding:10px 12px;margin:7px 0}
+.ib-item .b{white-space:pre-wrap;font-size:14.5px}
+.ib-item .m{font-size:12px;color:#93a3b3;margin-top:5px}
+.ib-item img{max-width:180px;border-radius:8px;margin-top:7px;display:block}
+.empty{color:#93a3b3;text-align:center;padding:20px 0;font-size:14px}
+details.done{margin-top:14px;border-top:1px solid #d8e2ec;padding-top:10px}
+details.done summary{cursor:pointer;color:#445;font-weight:600}
+.chipfile{display:inline-block;font-size:12px;background:#e8f2fa;border-radius:999px;padding:2px 9px;margin-top:7px;color:#0e7ea4}
 </style></head><body>
-<header><h1>Yomite <span class="badge" id="unreadBadge" hidden></span></h1>
-<input type="search" id="q" placeholder="検索（タイトル・概要・案件）"></header>
+<header>
+<div class="hrow"><div class="logo">Yomite</div>
+<div class="hicons">
+<button class="hbtn" id="btnSearch" title="検索">🔍</button>
+<button class="hbtn" id="btnAll" title="すべて表示">📄</button>
+<button class="hbtn" id="btnInbox" title="インボックス">✉️<span class="dot" id="inboxDot" hidden></span></button>
+</div></div>
+<div id="searchRow"><input type="search" id="q" placeholder="検索（タイトル・概要・案件）"></div>
+<div id="chips"></div>
+</header>
 <main><div id="list">読み込み中…</div>
-<section class="inbox"><h2>📥 インボックス（スマホから依頼を置く）</h2>
-<textarea id="inboxBody" placeholder="依頼を1つ書いてください。次にMacを開いたときに取り込まれます。"></textarea>
-<button class="send" id="inboxSend">置いておく</button><div class="msg" id="inboxMsg"></div>
-<h2>📤 送信した依頼</h2>
-<div id="inboxHistory">読み込み中…</div></section>
+<section class="inbox" id="inbox">
+<div class="ib-head"><span>‹</span><span class="t">インボックス</span><button id="ibReload" title="更新">↻</button></div>
+<div class="ib-sec"><span class="t">Claudeへの依頼</span><span class="line"></span><span class="pill" id="pendCount">0件</span></div>
+<div class="compose">
+<textarea id="inboxBody" placeholder="依頼を1つ書いてください"></textarea>
+<select id="inboxProject"><option value="">プロジェクト名（任意）</option></select>
+<div><span class="chipfile" id="imgName" hidden></span></div>
+<div class="ib-btns">
+<button class="btn-img" id="imgBtn">🖼 画像</button>
+<button class="btn-send" id="inboxSend">頼む →</button>
+</div>
+<input type="file" id="imgFile" accept="image/*" hidden>
+<div class="msg" id="inboxMsg"></div>
+<div class="ib-note">送るとすぐにClaudeへ通知が届きます。取り込み状況は下で分かります。</div>
+</div>
+<div id="pendingList"></div>
+<details class="done" id="doneBox"><summary>完了したもの</summary><div id="doneList"></div></details>
+</section>
 </main>
 <script>
-const listEl=document.getElementById('list'),qEl=document.getElementById('q'),badge=document.getElementById('unreadBadge');
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-async function load(){
-  const q=qEl.value.trim(); const url='/api/pages'+(q?('?q='+encodeURIComponent(q)):'');
-  const r=await fetch(url); const d=await r.json(); const pages=d.pages||[];
-  const unread=pages.filter(p=>!p.read_at).length;
-  badge.hidden=unread===0; badge.textContent='未読 '+unread;
-  const groups=new Map();
-  for(const p of pages){ if(!groups.has(p.project))groups.set(p.project,[]); groups.get(p.project).push(p); }
-  // pinned projects first: a project containing a pinned page floats up
-  const order=[...groups.entries()].sort((a,b)=>((b[1].some(p=>p.pinned)?1:0)-(a[1].some(p=>p.pinned)?1:0)));
-  if(!pages.length){listEl.innerHTML='<p>まだページがありません。</p>';return;}
-  listEl.innerHTML=order.map(([proj,ps])=>'<h2>'+(ps.some(p=>p.pinned)?'📌 ':'')+esc(proj)+'</h2>'+ps.map(p=>
-    '<div class="card'+(p.read_at?'':' unread')+'"><div class="row"><a class="grow" style="text-decoration:none;color:inherit" href="/p/'+esc(p.slug)+'" data-slug="'+esc(p.slug)+'">'+
-    '<span class="t">'+esc(p.title)+'</span>'+(p.read_at?'':' <span class="badge">未読</span>')+
-    (p.summary?'<div class="s">'+esc(p.summary)+'</div>':'')+
-    '<div class="meta">'+esc((p.created_at||'').slice(0,16).replace('T',' '))+'</div></a>'+
-    '<button class="pin'+(p.pinned?' on':'')+'" data-pin="'+esc(p.slug)+'">'+(p.pinned?'📌 固定中':'ピン留め')+'</button></div>'+
-    (p.decision_points?'<div class="decision">⚠ 判断ポイント\\n'+esc(p.decision_points)+'</div>':'')+'</div>').join('')).join('');
-  listEl.querySelectorAll('a[data-slug]').forEach(a=>a.addEventListener('click',()=>{fetch('/api/pages/'+a.dataset.slug+'/read',{method:'POST'});}));
-  listEl.querySelectorAll('button[data-pin]').forEach(b=>b.addEventListener('click',async e=>{e.preventDefault();await fetch('/api/pages/'+b.dataset.pin+'/pin',{method:'POST'});load();}));
+var listEl=document.getElementById('list'),qEl=document.getElementById('q'),chipsEl=document.getElementById('chips');
+var PAGES=[],MARKS={},chipSel='すべて';
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+var dtf=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',weekday:'short',hour12:false});
+function parts(iso){var o={};dtf.formatToParts(new Date(iso)).forEach(function(p){o[p.type]=p.value});return o}
+function dayKey(iso){var p=parts(iso);return p.year+'-'+p.month+'-'+p.day}
+function todayKey(){return dayKey(new Date().toISOString())}
+function ydayKey(){var d=new Date(Date.now()-86400000);return dayKey(d.toISOString())}
+function relTime(iso){
+  var p=parts(iso),k=dayKey(iso),hm=p.hour+':'+p.minute;
+  if(k===todayKey())return hm;
+  if(k===ydayKey())return '昨日 '+hm;
+  var diff=(new Date(todayKey())-new Date(k))/86400000;
+  if(diff<7)return p.weekday.replace('曜日','')+' '+hm;
+  return p.month+'/'+p.day+' '+hm;
 }
-let timer; qEl.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(load,250);});
-const histEl=document.getElementById('inboxHistory');
+function secLabel(k){
+  if(k===todayKey())return '今日';
+  if(k===ydayKey())return '昨日';
+  var p=parts(k+'T12:00:00Z');return p.month+'月'+p.day+'日（'+p.weekday.replace('曜日','')+'）';
+}
+function markOf(proj){return MARKS[proj]||{pinned:0,starred:0}}
+async function setMark(proj,field,val){
+  var m=markOf(proj);m[field]=val;MARKS[proj]=m;
+  await fetch('/api/projects/marks',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({project:proj,pinned:!!m.pinned,starred:!!m.starred})});
+  render();
+}
+function renderChips(){
+  var byProj={};
+  PAGES.forEach(function(p){if(!byProj[p.project]||p.created_at>byProj[p.project])byProj[p.project]=p.created_at});
+  var names=Object.keys(byProj).sort(function(a,b){return byProj[b]<byProj[a]?-1:1});
+  var html='<button class="chip'+(chipSel==='すべて'?' sel':'')+'" data-chip="すべて">すべて</button>';
+  names.forEach(function(n){
+    var days=Math.round((new Date(todayKey())-new Date(dayKey(byProj[n])))/86400000);
+    var rec=days<=0?'<span class="rec today">今日</span>':'<span class="rec">'+days+'日</span>';
+    html+='<button class="chip'+(chipSel===n?' sel':'')+'" data-chip="'+esc(n)+'">'+esc(n)+rec+'</button>';
+  });
+  chipsEl.innerHTML=html;
+  chipsEl.querySelectorAll('[data-chip]').forEach(function(b){b.addEventListener('click',function(){chipSel=b.dataset.chip;render()})});
+}
+function render(){
+  renderChips();
+  var q=qEl.value.trim().toLowerCase();
+  var pages=PAGES.filter(function(p){
+    if(chipSel!=='すべて'&&p.project!==chipSel)return false;
+    if(q&&(p.title+' '+(p.summary||'')+' '+p.project).toLowerCase().indexOf(q)<0)return false;
+    return true;
+  });
+  if(!pages.length){listEl.innerHTML='<p class="empty">まだページがありません。</p>';return}
+  var secs={};
+  pages.forEach(function(p){var k=dayKey(p.created_at);(secs[k]=secs[k]||[]).push(p)});
+  var keys=Object.keys(secs).sort().reverse();
+  listEl.innerHTML=keys.map(function(k){
+    var ps=secs[k];
+    var byProj={},order=[];
+    ps.forEach(function(p){if(!byProj[p.project]){byProj[p.project]=[];order.push(p.project)}byProj[p.project].push(p)});
+    order.sort(function(a,b){
+      var pa=markOf(a).pinned?0:1,pb=markOf(b).pinned?0:1;
+      if(pa!==pb)return pa-pb;
+      return byProj[b][0].created_at<byProj[a][0].created_at?-1:1;
+    });
+    var cards=order.map(function(proj){
+      var items=byProj[proj],m=markOf(proj);
+      var rows=items.map(function(p,i){
+        var row='<a class="prow'+(p.read_at?' read':'')+'" href="/p/'+esc(p.slug)+'" data-slug="'+esc(p.slug)+'">'
+          +'<span class="ud'+(p.read_at?' read':'')+'"></span>'
+          +'<span class="tt">'+esc(p.title)+'</span>'
+          +'<span class="tm">'+relTime(p.created_at)+'</span></a>';
+        if(p.decision_points)row+='<div class="dec">⚠ 判断ポイント: '+esc(p.decision_points)+'</div>';
+        return '<div class="'+(i>=4?'extra" style="display:none':'')+'">'+row+'</div>';
+      }).join('');
+      var more=items.length>4?'<button class="more">他 '+(items.length-4)+' 件を表示 ›</button>':'';
+      return '<div class="pcard"><div class="ph"><span class="pt">'+esc(proj)+'</span>'
+        +'<span class="pc">'+items.length+'件</span>'
+        +'<button class="icobtn pin'+(m.pinned?' on':'')+'" data-pinproj="'+esc(proj)+'" title="案件をピン留め">📌</button>'
+        +'<button class="icobtn star'+(m.starred?' on':'')+'" data-starproj="'+esc(proj)+'" title="スター">'+(m.starred?'★':'☆')+'</button></div>'
+        +rows+more+'</div>';
+    }).join('');
+    return '<div class="sec-head"><span class="lbl">'+secLabel(k)+'</span><span class="line"></span><span class="cnt">'+order.length+'テーマ・'+ps.length+'件</span></div><div class="grid">'+cards+'</div>';
+  }).join('');
+  listEl.querySelectorAll('a[data-slug]').forEach(function(a){a.addEventListener('click',function(){fetch('/api/pages/'+a.dataset.slug+'/read',{method:'POST'})})});
+  listEl.querySelectorAll('[data-pinproj]').forEach(function(b){b.addEventListener('click',function(){setMark(b.dataset.pinproj,'pinned',markOf(b.dataset.pinproj).pinned?0:1)})});
+  listEl.querySelectorAll('[data-starproj]').forEach(function(b){b.addEventListener('click',function(){setMark(b.dataset.starproj,'starred',markOf(b.dataset.starproj).starred?0:1)})});
+  listEl.querySelectorAll('.more').forEach(function(b){b.addEventListener('click',function(){
+    var card=b.closest('.pcard');var ex=card.querySelectorAll('.extra');var open=ex.length&&ex[0].style.display!=='none';
+    ex.forEach(function(e){e.style.display=open?'none':''});
+    b.textContent=open?'他 '+ex.length+' 件を表示 ›':'閉じる';
+  })});
+}
+async function load(){
+  var r=await fetch('/api/pages');var d=await r.json();
+  PAGES=d.pages||[];MARKS={};
+  (d.marks||[]).forEach(function(m){MARKS[m.project]=m});
+  var sel=document.getElementById('inboxProject');
+  var seen={};var opts='<option value="">プロジェクト名（任意）</option>';
+  PAGES.forEach(function(p){if(!seen[p.project]){seen[p.project]=1;opts+='<option>'+esc(p.project)+'</option>'}});
+  var cur=sel.value;sel.innerHTML=opts;sel.value=cur;
+  render();
+}
+var timer;qEl.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(render,200)});
+document.getElementById('btnSearch').addEventListener('click',function(){var r=document.getElementById('searchRow');r.classList.toggle('open');if(r.classList.contains('open'))qEl.focus()});
+document.getElementById('btnAll').addEventListener('click',function(){chipSel='すべて';qEl.value='';render()});
+document.getElementById('btnInbox').addEventListener('click',function(){document.getElementById('inbox').scrollIntoView({behavior:'smooth'})});
+/* --- inbox (スライド21) --- */
+var histEl={pend:document.getElementById('pendingList'),done:document.getElementById('doneList')};
+var imgKey=null;
+function ibItem(i,done){
+  var img=i.image_key?'<img src="/media/'+esc(i.image_key)+'" alt="">':'';
+  var proj=i.project?' ・ '+esc(i.project):'';
+  return '<div class="ib-item"><div class="b">'+esc(i.body)+'</div>'+img
+    +'<div class="m">'+relTime(i.created_at)+proj+' ・ '+(done?'✅ 受付済み':'⏳ 取り込み待ち')+'</div></div>';
+}
 async function loadInboxHistory(){
   try{
-    const r=await fetch('/api/inbox/history'); const d=await r.json(); const items=d.inbox||[];
-    if(!items.length){histEl.innerHTML='<p>まだ送信した依頼はありません。</p>';return;}
-    histEl.innerHTML=items.map(i=>'<div class="card"><div style="white-space:pre-wrap">'+esc(i.body)+'</div>'+
-      '<div class="meta">'+esc((i.created_at||'').slice(0,16).replace('T',' '))+' ・ '+(i.taken_at?'✅ 受付済み':'⏳ 取り込み待ち')+'</div></div>').join('');
+    var r=await fetch('/api/inbox/history');var d=await r.json();var items=d.inbox||[];
+    var pend=items.filter(function(i){return !i.taken_at}),done=items.filter(function(i){return i.taken_at});
+    document.getElementById('pendCount').textContent=pend.length+'件';
+    document.getElementById('inboxDot').hidden=pend.length===0;
+    histEl.pend.innerHTML=pend.length?pend.map(function(i){return ibItem(i,false)}).join(''):'<div class="empty">Macへ渡す依頼はありません</div>';
+    histEl.done.innerHTML=done.length?done.map(function(i){return ibItem(i,true)}).join(''):'<div class="empty">まだ完了したものはありません</div>';
   }catch(e){/* keep last shown list on transient errors */}
 }
-document.getElementById('inboxSend').addEventListener('click',async()=>{
-  const body=document.getElementById('inboxBody').value.trim(); const msg=document.getElementById('inboxMsg');
-  if(!body){msg.textContent='本文を書いてください';return;}
-  const r=await fetch('/api/inbox',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({body})});
-  msg.textContent=r.ok?'置きました。下の「送信した依頼」に出ます。':'送信に失敗しました';
-  if(r.ok){document.getElementById('inboxBody').value='';loadInboxHistory();}
+document.getElementById('ibReload').addEventListener('click',function(){loadInboxHistory();load()});
+document.getElementById('imgBtn').addEventListener('click',function(){document.getElementById('imgFile').click()});
+document.getElementById('imgFile').addEventListener('change',async function(ev){
+  var f=ev.target.files[0];if(!f)return;
+  var msg=document.getElementById('inboxMsg');msg.textContent='画像を送っています…';
+  var dataUrl=await new Promise(function(res){var fr=new FileReader();fr.onload=function(){res(fr.result)};fr.readAsDataURL(f)});
+  var b64=String(dataUrl).split(',')[1]||'';
+  var r=await fetch('/api/inbox/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({filename:f.name,contentType:f.type,data:b64})});
+  var d=await r.json().catch(function(){return {}});
+  if(r.ok&&d.key){imgKey=d.key;var n=document.getElementById('imgName');n.hidden=false;n.textContent='🖼 '+f.name;msg.textContent='画像を添付しました';}
+  else{msg.textContent='画像の送信に失敗しました';}
+});
+document.getElementById('inboxSend').addEventListener('click',async function(){
+  var body=document.getElementById('inboxBody').value.trim();var msg=document.getElementById('inboxMsg');
+  if(!body){msg.textContent='本文を書いてください';return}
+  var payload={body:body,project:document.getElementById('inboxProject').value};
+  if(imgKey)payload.image_key=imgKey;
+  var r=await fetch('/api/inbox',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+  msg.textContent=r.ok?'置きました。下に並びます。':'送信に失敗しました';
+  if(r.ok){document.getElementById('inboxBody').value='';imgKey=null;document.getElementById('imgName').hidden=true;loadInboxHistory();}
 });
 loadInboxHistory();
 setInterval(loadInboxHistory,30000);
@@ -253,8 +484,18 @@ export default {
       if (request.method === "GET" && path === "/") {
         return new Response(READER_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
       }
+      if (request.method === "GET" && path === "/kit/review.css") {
+        return new Response(REVIEW_CSS, { headers: { "content-type": "text/css; charset=utf-8" } });
+      }
+      if (request.method === "GET" && path === "/kit/review.js") {
+        return new Response(REVIEW_JS, { headers: { "content-type": "text/javascript; charset=utf-8" } });
+      }
+      if (request.method === "GET" && path === "/kit/report.css") {
+        return new Response(REPORT_CSS, { headers: { "content-type": "text/css; charset=utf-8" } });
+      }
       if (request.method === "GET" && path === "/api/pages") return listPages(request, env);
       if (request.method === "POST" && path === "/api/pages") return publishPage(request, env);
+      if (request.method === "POST" && path === "/api/projects/marks") return setProjectMark(request, env);
       const pageAction = path.match(/^\/api\/pages\/([^/]+)\/(read|pin)$/);
       if (request.method === "POST" && pageAction) {
         const slug = decodeURIComponent(pageAction[1]);
@@ -263,9 +504,13 @@ export default {
       if (request.method === "GET" && path.startsWith("/p/")) {
         return servePage(decodeURIComponent(path.slice(3)), env);
       }
+      if (request.method === "GET" && path.startsWith("/media/")) {
+        return serveMedia(decodeURIComponent(path.slice(7)), env);
+      }
       if (request.method === "GET" && path === "/api/inbox/history") return inboxHistory(request, env);
       if (request.method === "GET" && path === "/api/inbox") return listInbox(request, env);
       if (request.method === "POST" && path === "/api/inbox") return addInbox(request, env, ctx);
+      if (request.method === "POST" && path === "/api/inbox/image") return uploadInboxImage(request, env);
       const take = path.match(/^\/api\/inbox\/(\d+)\/taken$/);
       if (request.method === "POST" && take) return takeInbox(take[1], request, env);
       return json({ error: "not found" }, 404);

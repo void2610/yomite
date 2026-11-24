@@ -4,6 +4,7 @@
 //   YOMITE_TOKEN=<PUBLISH_TOKEN> \
 //   node scripts/publish.mjs <file.html> --title "..." --project "..." [--summary "..."] [--decision "..."]
 import { readFile } from "node:fs/promises";
+import { lintHtml } from "./lint.mjs";
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith("--"));
@@ -20,6 +21,8 @@ if (!file || !opt("title")) {
 if (!base) { console.error("YOMITE_URL が未設定です"); process.exit(1); }
 
 const html = await readFile(file, "utf8");
+// 公開前 lint (スライド64): 警告のみで公開は止めない
+for (const w of lintHtml(html, file)) console.error(`⚠ [lint:${w.kind}] ${w.msg}`);
 const res = await fetch(`${base.replace(/\/$/, "")}/api/pages`, {
   method: "POST",
   headers: {

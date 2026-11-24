@@ -1,0 +1,40 @@
+/* Yomite レポート定型フォーマット — スライド13・17・24 のページ形式
+   使い方: <link rel="stylesheet" href="/kit/report.css"> を入れ、
+   .rpt-num + 見出しで節を作り、.rpt-flow / .rpt-cols / .rpt-decision を使う。 */
+body{margin:0;font-family:system-ui,-apple-system,"Hiragino Sans",sans-serif;background:linear-gradient(160deg,#f4f9fd,#e8f1f8);color:#1c2733;line-height:1.75}
+.rpt{max-width:860px;margin:0 auto;padding:28px 18px 64px}
+.rpt-crumb{color:#0e7ea4;font-size:13px;margin-bottom:6px}
+.rpt h1{font-size:27px;color:#12294d;margin:0 0 6px}
+.rpt-sub{color:#445;margin-bottom:14px}
+.rpt-meta{font-size:12px;color:#888;margin-bottom:18px}
+.rpt-toc{background:#fff;border-radius:14px;padding:14px 18px;box-shadow:0 2px 10px rgba(30,60,90,.06);margin-bottom:26px}
+.rpt-toc h2{font-size:13px;color:#666;margin:0 0 8px}
+.rpt-toc ol{margin:0;padding:0;list-style:none}
+.rpt-toc li{margin:4px 0}
+.rpt-toc a{color:#0e7ea4;text-decoration:none;font-weight:600}
+.rpt-toc .n{color:#0e7ea4;font-weight:700;margin-right:8px}
+section.rpt-sec{margin:34px 0}
+.rpt-num{color:#0e7ea4;font-size:13px;font-weight:700;letter-spacing:.08em}
+section.rpt-sec>h2{font-size:21px;color:#12294d;margin:2px 0 10px}
+.rpt-flow{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin:14px 0}
+.rpt-flow .box{background:#e8f2fa;border-radius:10px;padding:10px 12px;flex:1;min-width:120px}
+.rpt-flow .box .when{font-size:12px;color:#0e7ea4}
+.rpt-flow .box .what{font-weight:700;color:#12294d}
+.rpt-flow .box .sub{font-size:12px;color:#667}
+.rpt-flow .box.hot{background:linear-gradient(150deg,#0d4d66,#0e7ea4);color:#fff}
+.rpt-flow .box.hot .when,.rpt-flow .box.hot .what,.rpt-flow .box.hot .sub{color:#fff}
+.rpt-flow .arr{align-self:center;color:#0e7ea4;font-weight:700}
+.rpt-cap{text-align:center;font-size:12px;color:#888;margin-top:2px}
+.rpt-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+@media(max-width:640px){.rpt-cols{grid-template-columns:1fr}}
+.rpt-panel{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(30,60,90,.06)}
+.rpt-panel h3{background:linear-gradient(90deg,#1295b4,#2478d8);color:#fff;font-size:15px;margin:0;padding:9px 14px}
+.rpt-panel .body{padding:10px 14px;font-size:14px}
+.rpt-decision{background:#fff8d6;border:1.5px solid #e6c34a;border-radius:12px;padding:12px 16px;margin:14px 0}
+.rpt-decision:before{content:"判断ポイント";display:inline-block;background:#e6c34a;color:#5c4a00;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;margin-bottom:6px}
+table{border-collapse:collapse;width:100%;margin:12px 0;background:#fff}
+th{background:#dceefb;color:#12294d;text-align:left;padding:8px 10px;border:1px solid #c9d9e8}
+td{padding:8px 10px;border:1px solid #d8e2ec;vertical-align:top}
+td.k{background:linear-gradient(90deg,#e3e9fb,#dceefb);font-weight:700;color:#12294d;white-space:nowrap}
+mark{background:#fff0a6;padding:0 2px;border-radius:2px}
+code{background:#eef2f6;border-radius:6px;padding:1px 6px;font-size:.92em}

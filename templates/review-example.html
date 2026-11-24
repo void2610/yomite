@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>判断キットの使用例</title>
+<link rel="stylesheet" href="/kit/report.css">
+<link rel="stylesheet" href="/kit/review.css">
+</head><body><div class="rpt">
+<div class="rpt-crumb">Yomite ／ 判断キット</div>
+<h1>判断キットの使用例</h1>
+<div class="rpt-sub">スライド25・28・29・31・32・35 の判断UIをそのまま使うための見本ページです。</div>
+
+<section class="rpt-sec">
+<div class="rpt-num">01</div>
+<h2>判断カード（選択肢＋推奨＋コメント）</h2>
+<p>判断が要る点には選択肢と推奨を付けます。推奨は最初から選択済みで、返事をしなければそのままOKとして扱います。</p>
+
+<div class="rv-item" data-q="26ページのスクショは？">
+  <div class="rv-num">02</div>
+  <h3>26ページのスクショ<span class="rv-badge">判断</span></h3>
+  <div class="rv-cmp-now"><span class="rv-cmp-label">いま</span> — 判断する文面だけが載っている</div>
+  <div class="rv-cmp-plan"><span class="rv-cmp-label">案B<small>推奨</small></span> — 文面のすぐ下に判断の箱を置く</div>
+  <div class="rv-q">26ページのスクショは？</div>
+  <div class="rv-choices">
+    <button class="rv-opt">案A</button>
+    <button class="rv-opt" data-recommend>案B<span class="rv-rec">おすすめ</span></button>
+  </div>
+  <textarea class="rv-comment" placeholder="コメント（任意）"></textarea>
+</div>
+</section>
+
+<section class="rpt-sec">
+<div class="rpt-num">02</div>
+<h2>赤枠の判断ボックス（判断は1点だけ目立たせる）</h2>
+<div class="rv-decision">
+  <h3>ここで決めてください（判断1／全1）：実機確認系10件の扱い</h3>
+  <div class="rv-plan"><b>A案（おすすめ）：</b>午後のゲラ読み直しのついでに突き合わせる。指摘があれば即修正します。</div>
+  <div class="rv-plan"><b>B案：</b>このまま入稿し、増刷時の宿題へ回す。リスクは限定的です。</div>
+</div>
+</section>
+
+<section class="rpt-sec">
+<div class="rpt-num">03</div>
+<h2>該当箇所の直下に置く判断（引用＋文字数）</h2>
+<div class="rv-item" data-q="この概要で返送してよいか">
+  <h3 style="font-size:17px">セミナー概要の文面<span class="rv-badge-count">判断ポイント 1／4</span></h3>
+  <div class="rv-quote">生成AIを「使う」段階から、日々の業務をAIに「任せる」段階へ。さらに進めば、自社の業務に合わせたAIエージェントを「作る」こともできます。
+  <div class="rv-chars">147字</div></div>
+  <div class="rv-q">この概要で返送してよいか</div>
+  <div class="rv-choices">
+    <button class="rv-opt" data-recommend>この文面で反映<span class="rv-rec">おすすめ</span></button>
+    <button class="rv-opt">直してほしい</button>
+  </div>
+  <textarea class="rv-comment" placeholder="コメント（任意）"></textarea>
+</div>
+</section>
+
+<section class="rpt-sec">
+<div class="rpt-num">04</div>
+<h2>修正前と修正後を左右に並べる</h2>
+<div class="rv-context">02-AIエージェントの基礎知識 ／ 節「従量課金で使うといくらかかるのか」</div>
+<div class="rv-ba">
+  <div class="rv-before"><span class="rv-ba-badge">現行（初刷）</span>
+    <p>単価は、100万トークンあたりの入力単価が<mark>5</mark>ドル、出力単価が<mark>25</mark>ドルです。</p></div>
+  <div class="rv-after"><span class="rv-ba-badge">2刷の案</span>
+    <p>単価は、100万トークンあたりの入力単価が<mark>4</mark>ドル、出力単価が<mark>20</mark>ドルです。</p></div>
+</div>
+<p>変えた1文だけではなく、節の話題と前後の段落も一緒に載せます。</p>
+</section>
+
+<div class="rv-copybar">
+  <button class="rv-copy">選んだ結果をまとめてコピー</button>
+  <pre class="rv-out"></pre>
+</div>
+</div>
+<script src="/kit/review.js"></script>
+</body></html>

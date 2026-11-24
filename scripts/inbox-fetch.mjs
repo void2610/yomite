@@ -24,7 +24,9 @@ if (!res.ok) { console.error(`fetch failed: ${res.status}`); process.exit(1); }
 const { inbox } = await res.json();
 if (!inbox.length) { console.log("インボックスは空です"); process.exit(0); }
 for (const item of inbox) {
-  console.log(`#${item.id} [${item.created_at}] ${item.body}`);
+  const proj = item.project ? ` (${item.project})` : "";
+  const img = item.image_key ? ` [画像: ${root}/media/${item.image_key}]` : "";
+  console.log(`#${item.id} [${item.created_at}]${proj} ${item.body}${img}`);
 }
 if (args[0] === "--take-all") {
   for (const item of inbox) await take(item.id);
