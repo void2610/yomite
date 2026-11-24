@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スライド全69枚 照合と全機能実装の報告</title>
+<link rel="stylesheet" href="/kit/report.css">
+<link rel="stylesheet" href="/kit/review.css">
+<style>th{background:#dceefb}</style>
+</head><body><div class="rpt">
+<div class="rpt-crumb">Yomite ／ スライド照合</div>
+<h1>スライド全69枚 照合と全機能実装の報告</h1>
+<div class="rpt-sub">講演「認知負荷の減らし方」のスライド全69枚を画像のまま読み直し、1枚ずつ棚卸しして、写っているUIと仕組みを Yomite に実装し直しました。</div>
+<div class="rpt-meta">2026-11-24 時点。一次資料は slides/slide_00.jpg 〜 slide_68.jpg の69枚と、リポジトリの slide-inventory.md です。</div>
+
+<div class="rpt-toc"><h2>目次</h2><ol>
+<li><a href="#s1"><span class="n">01</span>照合の方法</a></li>
+<li><a href="#s2"><span class="n">02</span>スライド69枚の棚卸し（要約表）</a></li>
+<li><a href="#s3"><span class="n">03</span>リーダーUI（スライド12）</a></li>
+<li><a href="#s4"><span class="n">04</span>インボックス（スライド20・21）</a></li>
+<li><a href="#s5"><span class="n">05</span>判断キット（スライド25・28〜33・35）</a></li>
+<li><a href="#s6"><span class="n">06</span>公開前 lint（スライド64）</a></li>
+<li><a href="#s7"><span class="n">07</span>ワークフロー側の成果物</a></li>
+<li><a href="#s8"><span class="n">08</span>統合機能リストと実装状況</a></li>
+<li><a href="#s9"><span class="n">09</span>検証結果（実測）</a></li>
+<li><a href="#s10"><span class="n">10</span>付けなかったものと、その理由</a></li>
+</ol></div>
+
+<section class="rpt-sec" id="s1">
+<div class="rpt-num">01</div>
+<h2>照合の方法</h2>
+<p>前回はスライドの文字起こしだけを読み、サイト本体のつもりで作ったものを「完成」と報告しました。今回は画像そのものを全枚読みました。読み方は、7つの範囲に分けた並行読みで69枚すべてを目視し、各スライドについて「何が写っているか」「どんなUIがあるか」「どんな機能が読み取れるか」を記録しました。記録はリポジトリの <code>slide-inventory.md</code> に残してあります。</p>
+<p>棚卸しの結果、講演の仕組みは3つの層に分かれました。第1に読む専用サイトとインボックスという製品の層、第2に公開されるページの中の判断部品の層、第3に Muse 側の運用の層です。前回の Yomite は第1層の一部だけで、第2層は皆無、第3層は3行ルール程度しか入っていませんでした。今回は3層すべてに手を入れています。</p>
+<svg width="100%" height="120" viewBox="0 0 640 120" role="img" aria-label="3層の図">
+  <rect x="10" y="30" width="180" height="60" rx="10" fill="#dceefb" stroke="#2478d8"/>
+  <text x="100" y="55" text-anchor="middle" font-size="14" fill="#12294d" font-weight="700">製品の層</text>
+  <text x="100" y="76" text-anchor="middle" font-size="11" fill="#445">サイト／インボックス</text>
+  <rect x="230" y="30" width="180" height="60" rx="10" fill="#cdeede" stroke="#0e9f6e"/>
+  <text x="320" y="55" text-anchor="middle" font-size="14" fill="#12294d" font-weight="700">ページ部品の層</text>
+  <text x="320" y="76" text-anchor="middle" font-size="11" fill="#445">判断カード／赤枠／前後比較</text>
+  <rect x="450" y="30" width="180" height="60" rx="10" fill="#fdeec9" stroke="#c9930a"/>
+  <text x="540" y="55" text-anchor="middle" font-size="14" fill="#12294d" font-weight="700">運用の層</text>
+  <text x="540" y="76" text-anchor="middle" font-size="11" fill="#445">巡回／状態絵文字／検査化</text>
+  <text x="200" y="62" font-size="16" fill="#888">＋</text>
+  <text x="420" y="62" font-size="16" fill="#888">＋</text>
+</svg>
+<div class="rpt-cap">講演の仕組みは3層。前回の Yomite は左の層の一部だけでした</div>
+</section>
+
+<section class="rpt-sec" id="s2">
+<div class="rpt-num">02</div>
+<h2>スライド69枚の棚卸し（要約表）</h2>
+<p>全枚の分類です。詳細は <code>slide-inventory.md</code> の各スライド節にあります。</p>
+<table>
+<thead><tr><th>#</th><th>スライド</th><th>分類</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>表紙</td><td>その他</td></tr>
+<tr><td>2</td><td>自己紹介</td><td>その他</td></tr>
+<tr><td>3</td><td>AIと一緒に働くのが当たり前になってきましたか？</td><td>問題提起</td></tr>
+<tr><td>4</td><td>AIが出してきたもの全部読めてますか？</td><td>問題提起</td></tr>
+<tr><td>5</td><td>確認待ちの速度と規模が変わった</td><td>問題提起</td></tr>
+<tr><td>6</td><td>ボトルネックは僕ら人間の判断</td><td>問題提起</td></tr>
+<tr><td>7</td><td>全部テキストで出されても読み切れない</td><td>問題提起</td></tr>
+<tr><td>8</td><td>そもそも長い！チャット欄じゃ読めない！</td><td>問題提起（チャット画面）</td></tr>
+<tr><td>9</td><td>長い報告は「HTMLにして」と頼もう</td><td>運用</td></tr>
+<tr><td>10</td><td>HTMLが増えてきたらどれがどれだか</td><td>問題提起</td></tr>
+<tr><td>11</td><td>毎日HTMLが何十個も溜まって行方不明に</td><td>問題提起</td></tr>
+<tr><td>12</td><td>読む専用のサイト「HTML共有くん」を作りました</td><td>サイト機能 ★中核UI</td></tr>
+<tr><td>13</td><td>自分好みのデザインで見やすくまとめられる</td><td>ページ部品（定型書式）</td></tr>
+<tr><td>14</td><td>Codexで作ったページも同じ場所に集まる</td><td>サイト機能</td></tr>
+<tr><td>15</td><td>3行を超えたらHTMLで！</td><td>運用</td></tr>
+<tr><td>16</td><td>説明の本体はHTMLに残す</td><td>運用</td></tr>
+<tr><td>17</td><td>スマホでも読める！</td><td>サイト機能（閲覧UI）</td></tr>
+<tr><td>18</td><td>裏側はAWSのサーバーレス（ログイン判定）</td><td>サイト機能（基盤）</td></tr>
+<tr><td>19</td><td>Macを閉じている間はどうするの？</td><td>橋渡し</td></tr>
+<tr><td>20</td><td>HTML共有くんにインボックスを追加！</td><td>インボックス</td></tr>
+<tr><td>21</td><td>スマホからはこう頼みます</td><td>インボックス ★画面UI</td></tr>
+<tr><td>22</td><td>「巡回して」の一言で並行に捌く</td><td>運用（巡回）</td></tr>
+<tr><td>23</td><td>見るのは⚠が付いたものだけ</td><td>運用（状態絵文字）</td></tr>
+<tr><td>24</td><td>数分しゃべると企画案のページができる</td><td>運用＋ページ形式</td></tr>
+<tr><td>25</td><td>この講演のスライドもこうして直しました</td><td>ページ部品（案の比較）</td></tr>
+<tr><td>26</td><td>長いレポート、結局どこを見ればいいの？</td><td>橋渡し</td></tr>
+<tr><td>27</td><td>書籍の原稿は観点別のチェックリストで点検</td><td>運用（点検）</td></tr>
+<tr><td>28</td><td>判断が要るのは赤枠の1点</td><td>ページ部品（赤枠）</td></tr>
+<tr><td>29</td><td>判断ポイントを読んでいる場所に置く</td><td>ページ部品 ★判断UI</td></tr>
+<tr><td>30</td><td>返事をしなければOKの合図</td><td>ページ部品（意味論）</td></tr>
+<tr><td>31</td><td>判断は選択肢から選んで返す</td><td>ページ部品 ★判断カード</td></tr>
+<tr><td>32</td><td>最後はコピーして貼るだけ</td><td>ページ部品 ★コピー</td></tr>
+<tr><td>33</td><td>貼った1回で全部反映！</td><td>ページ部品（コピー形式）</td></tr>
+<tr><td>34</td><td>「で、修正前ってどうだったっけ？」</td><td>橋渡し</td></tr>
+<tr><td>35</td><td>修正前と修正後を左右に並べる</td><td>ページ部品 ★前後比較</td></tr>
+<tr><td>36</td><td>変えた1文だけ見せられても困る</td><td>提示ルール</td></tr>
+<tr><td>37</td><td>案は3つも要る？</td><td>提示ルール</td></tr>
+<tr><td>38</td><td>AIは善意で足してくる</td><td>診断</td></tr>
+<tr><td>39</td><td>増えたルールの多くは「足さない」</td><td>運用（書かないルール）</td></tr>
+<tr><td>40</td><td>毎回同じ指示を出すの、面倒になってこない？</td><td>橋渡し</td></tr>
+<tr><td>41</td><td>つまずき1位は「やり方の取り違え」</td><td>運用（診断）</td></tr>
+<tr><td>42</td><td>「学習しといて」の一言で設定に残す</td><td>運用（学習）</td></tr>
+<tr><td>43</td><td>同じ指摘が2回来たら検査にする</td><td>運用（検査化）</td></tr>
+<tr><td>44</td><td>成長スピードが変わった</td><td>その他</td></tr>
+<tr><td>45</td><td>開発のときはどこを見てるの？</td><td>章扉</td></tr>
+<tr><td>46</td><td>私がふだん作っているアプリ</td><td>その他</td></tr>
+<tr><td>47</td><td>いま作っている「みのるんエージェント」</td><td>別プロダクト</td></tr>
+<tr><td>48</td><td>みのるんエージェントをスマホで試せます！</td><td>別プロダクト</td></tr>
+<tr><td>49</td><td>昔はコードを1行ずつ読んでいた</td><td>運用思想</td></tr>
+<tr><td>50</td><td>レビューの重心を前と後ろへ移す</td><td>運用</td></tr>
+<tr><td>51</td><td>技術選定はAIと相談して自分で決め切る</td><td>ページ形式（評価表）</td></tr>
+<tr><td>52</td><td>決めたことは一覧表で残す</td><td>ページ形式（決定表）</td></tr>
+<tr><td>53</td><td>実装の説明もHTMLで読む</td><td>ページ形式（構成図）</td></tr>
+<tr><td>54</td><td>VS Codeは開かない</td><td>運用</td></tr>
+<tr><td>55</td><td>得意な領域は実装まで質問で確かめる</td><td>運用</td></tr>
+<tr><td>56</td><td>ちゃんと動くかはどう確かめるの？</td><td>橋渡し</td></tr>
+<tr><td>57</td><td>途中のコードより動くかどうか</td><td>運用（検証方針）</td></tr>
+<tr><td>58</td><td>動作確認は質問集にして渡す</td><td>成果物（E2E質問集）</td></tr>
+<tr><td>59</td><td>確かめ方も設定に書いておく</td><td>運用</td></tr>
+<tr><td>60</td><td>どのモデルに乗り換える？</td><td>ページ形式＋運用</td></tr>
+<tr><td>61</td><td>一晩試させて朝に結果を読む</td><td>運用</td></tr>
+<tr><td>62</td><td>Slackの申請ボットはブラウザで試させた</td><td>運用（検証）</td></tr>
+<tr><td>63</td><td>その「直りました」は本当？</td><td>運用（完了ゲート）</td></tr>
+<tr><td>64</td><td>体裁のルールもスクリプトに</td><td>成果物 ★lint</td></tr>
+<tr><td>65</td><td>明日から何をすればいいの？</td><td>橋渡し</td></tr>
+<tr><td>66</td><td>最初に足すならこの3行</td><td>運用（総括）</td></tr>
+<tr><td>67</td><td>育てたスキルはGitHubで公開しています</td><td>公開の形</td></tr>
+<tr><td>68</td><td>全ての仕事をClaude Codeと一緒に</td><td>締め</td></tr>
+<tr><td>69</td><td>重版出来（書籍告知）</td><td>その他</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="rpt-sec" id="s3">
+<div class="rpt-num">03</div>
+<h2>リーダーUI（スライド12）</h2>
+<p>スライド12のスクリーンショットと、Yomite のトップ画面の対応です。</p>
+<table>
+<thead><tr><th>原典の要素</th><th>Yomite の実装</th></tr></thead>
+<tbody>
+<tr><td>ヘッダー左: 縦バー＋サイト名</td><td>水色グラデーションの縦バー＋「Yomite」</td></tr>
+<tr><td>ヘッダー右: 検索／ドキュメント／封筒（新着で黄色ドット）／…</td><td>🔍（検索欄の開閉）／📄（すべて表示）／✉️（未取り込みがある間は橙ドット）</td></tr>
+<tr><td>案件チップ＋新しさラベル（今日は金色、N日は青）</td><td>「すべて」＋案件チップ。最新ページの新しさで「今日」「N日」を表示し、選択中は青グラデーション</td></tr>
+<tr><td>日付セクション「今日」＋右に「6テーマ・249件」</td><td>日付ごとに「今日／昨日／M月D日（曜）」の見出しと罫線、右に「Nテーマ・M件」</td></tr>
+<tr><td>案件カード（2列）: 案件名、件数、ピン、星</td><td>2列グリッド（スマホは1列）。ピンは案件単位で青く塗られ、ピンの案件が先頭に並ぶ。星も案件単位で付け外しできる</td></tr>
+<tr><td>ページ行: 未読は水色●、既読はドットなし・グレー</td><td>同じ表現に変更。既読はサーバー側で保持し端末間で同期</td></tr>
+<tr><td>相対時刻「昨日 01:06」「18:20」「日曜 16:12」</td><td>日本時間で同じ形式に整形</td></tr>
+<tr><td>カード内は4行まで、残りは「他 N 件を表示 ›」</td><td>同じ。押すと残りが開き「閉じる」に変わる</td></tr>
+<tr><td>判断ポイントの表示</td><td>原典のカードには無いが、従来の Yomite の運用に合わせ、判断ポイントがあるページ行の下に小さく黄色で出す形を残した</td></tr>
+</tbody>
+</table>
+<div class="rpt-decision">スター（☆）は原典では全カードに付いていますが、絞り込みには使われていないように見えました。Yomite では付け外しと保持まで実装し、「スター付きだけ表示」の絞り込みは入れていません。必要でしたら足します。</div>
+<p>案件のピンとスターは D1 の <code>project_marks</code> 表に保存します（migration 0002）。ページ単位のピン留めAPIは従来どおり残してあります。</p>
+</section>
+
+<section class="rpt-sec" id="s4">
+<div class="rpt-num">04</div>
+<h2>インボックス（スライド20・21）</h2>
+<p>スライド21のスマホ画面に合わせて、インボックスを作り直しました。</p>
+<table>
+<thead><tr><th>原典の要素</th><th>Yomite の実装</th></tr></thead>
+<tbody>
+<tr><td>ヘッダー「‹ インボックス」＋更新アイコン</td><td>同じ配置。更新で一覧とページを再読み込み</td></tr>
+<tr><td>「Claudeへの依頼」＋件数ピル「0件」</td><td>同じ。件数は未取り込みの数</td></tr>
+<tr><td>本文テキストエリア</td><td>同じ。本文1つで送れる</td></tr>
+<tr><td>「プロジェクト名（任意）」セレクト</td><td>既存の案件名から選ぶセレクトを追加。インボックスの行と通知メールと取り込み一覧に案件名が出る</td></tr>
+<tr><td>「画像」ボタン</td><td>画像を選ぶと R2 に上がり、依頼に添付される。一覧ではサムネイル、取り込み側では画像URLが出る</td></tr>
+<tr><td>「頼む →」青グラデーションボタン</td><td>同じ見た目と文言</td></tr>
+<tr><td>空状態「Macへ渡す依頼はありません」</td><td>未取り込みが無いときに同じ文言</td></tr>
+<tr><td>「完了したもの」折りたたみ</td><td>取り込み済みの一覧を折りたたみで表示</td></tr>
+<tr><td>新着はバッジで分かる</td><td>ヘッダーの✉️に橙ドット＋件数ピル</td></tr>
+<tr><td>Macで /inbox と打つと読み取る</td><td><code>scripts/inbox-fetch.mjs</code> が相当。案件名と画像URLも出すよう拡張</td></tr>
+<tr><td>Macへの通知は付けていない</td><td><mark>差分</mark>: Izumi様の指示で、投稿の瞬間に yomite@muse.ai へ通知メールを送る形を維持した</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="rpt-sec" id="s5">
+<div class="rpt-num">05</div>
+<h2>判断キット（スライド25・28〜33・35）</h2>
+<p>公開されるページの中に入る判断部品を、使い回せるキットとして Worker から配信するようにしました。<code>/kit/review.css</code> と <code>/kit/review.js</code> を読み込むだけで使えます。実物は「判断キットの使用例」のページで触れます。</p>
+<table>
+<thead><tr><th>部品</th><th>出典</th><th>中身</th></tr></thead>
+<tbody>
+<tr><td>判断カード .rv-item</td><td>31</td><td>番号、見出し、赤ピル「判断」、現行と案の比較エリア、質問、ピル型選択肢、コメント欄</td></tr>
+<tr><td>推奨の初期選択</td><td>30, 37</td><td>おすすめの選択肢は最初から選択済み。返事をしなければそれがOKとして扱われる</td></tr>
+<tr><td>赤枠ボックス .rv-decision</td><td>28</td><td>薄ピンク地＋赤枠、「ここで決めてください（判断n／全N）」、A案（おすすめ）／B案の子箱</td></tr>
+<tr><td>引用＋判断 .rv-quote</td><td>29</td><td>対象文面の引用ブロック、文字数表示、その直下の判断。「判断ポイント n／N」バッジ</td></tr>
+<tr><td>まとめてコピー .rv-copy</td><td>32, 33</td><td>「選んだ結果をまとめてコピー」ボタン。選んだ項目とコメントだけを「質問 選択肢（コメント）」で1行ずつコピーし、画面にも結果を表示する</td></tr>
+<tr><td>前後比較 .rv-ba</td><td>35, 36</td><td>左「現行」灰バッジ、右「案」青バッジ、変更箇所は &lt;mark&gt; の黄色ハイライト、節の文脈行</td></tr>
+<tr><td>定型書式 /kit/report.css</td><td>13, 17, 24</td><td>パンくず、目次カード、番号付き節、フロー図（要所は濃色反転）、水色見出しの2カラムパネル、判断ポイントの黄色ボックス、決定表の書式</td></tr>
+</tbody>
+</table>
+<p>雛形は <code>templates/report.html</code> と <code>templates/review-example.html</code> にあります。この報告自体も report.css で組んでいます。</p>
+</section>
+
+<section class="rpt-sec" id="s6">
+<div class="rpt-num">06</div>
+<h2>公開前 lint（スライド64）</h2>
+<p><code>scripts/lint.mjs</code> を作り、<code>scripts/publish.mjs</code> が公開の直前に自動で通すようにしました。警告だけで、公開は止めません。</p>
+<div class="rpt-flow">
+  <div class="box"><div class="when">検査1</div><div class="what">図が無い</div><div class="sub">img・svg・figure が0なら警告</div></div>
+  <div class="arr">▶</div>
+  <div class="box"><div class="when">検査2</div><div class="what">AIっぽい言い回し</div><div class="sub">定型句リストと照合（リストは編集可能）</div></div>
+  <div class="arr">▶</div>
+  <div class="box"><div class="when">検査3</div><div class="what">表の崩れ</div><div class="sub">thead・th の有無、見出しの背景色、tr の対応</div></div>
+  <div class="arr">▶</div>
+  <div class="box hot"><div class="when">その後</div><div class="what">公開</div><div class="sub">見た目の確認だけ人間がする</div></div>
+</div>
+<div class="rpt-cap">スライド64の3検査と、公開を止めない進み方</div>
+<p>実際に、図の無い使用例ページを公開したときは図の警告が出て、そのまま公開できました。この報告は図（SVG）と表の見出し色を入れてあり、警告なしで通っています。</p>
+</section>
+
+<section class="rpt-sec" id="s7">
+<div class="rpt-num">07</div>
+<h2>ワークフロー側の成果物</h2>
+<p>サイトの機能ではないものは、リポジトリの成果物として残しました。運用ルールの全文は <code>docs/workflows.md</code> です。</p>
+<table>
+<thead><tr><th>出典</th><th>内容</th><th>成果物</th></tr></thead>
+<tbody>
+<tr><td>22</td><td>「巡回して」で溜まった連絡を1件ずつ別セッションへ。送信直前で止まる</td><td>docs/workflows.md に手順を明記</td></tr>
+<tr><td>23</td><td>スレッド名係が10分おきに状態絵文字（⏳作業中／✅終わった／⚠私の番）</td><td>scripts/session-status.mjs（状態→絵文字の決定と付け替え、--watch で10分間隔）</td></tr>
+<tr><td>24</td><td>数分しゃべると企画案のページができる</td><td>templates/report.html の書式で受けられる形にした</td></tr>
+<tr><td>27</td><td>観点別チェックリスト点検（表記ゆれ／事実の裏取り／リンク切れ／図の位置）</td><td>docs/workflows.md に手順を明記</td></tr>
+<tr><td>39, 42, 43</td><td>書かないルール／「学習しといて」／2回目の指摘は検査にする</td><td>docs/workflows.md に明記。検査化の実例が lint</td></tr>
+<tr><td>58</td><td>E2E質問集（質問 q＋期待ツール tools）を本番に流して自動判定</td><td>templates/e2e-cases.json（スライドの2件をそのまま収録）</td></tr>
+<tr><td>59, 63</td><td>確かめ方も設定に書く／完了の二重ゲート（本番の設定を読む、使う人の手順で通す）</td><td>docs/workflows.md に明記</td></tr>
+<tr><td>15, 66</td><td>3行ルール、判断点は該当箇所、修正は左右並置</td><td>従来どおり運用ルールとして継続</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="rpt-sec" id="s8">
+<div class="rpt-num">08</div>
+<h2>統合機能リストと実装状況</h2>
+<p>棚卸しで重複を除いた64項目の行き先です。「実装」はサイトやキットに入ったもの、「運用」は docs/workflows.md 等に残したもの、「対象外」は理由を添えたものです。全項目の出典スライドは slide-inventory.md の統合リストにあります。</p>
+<table>
+<thead><tr><th>区分</th><th>件数</th><th>内訳</th></tr></thead>
+<tbody>
+<tr><td class="k">A. サイト機能（15項目）</td><td>実装 13／対象外 2</td><td>一覧、案件グループ、新しい順、既読同期、未読ドット、相対時刻、案件ピン、案件スター、案件チップ、カード＋他N件、ヘッダーのアイコン群、検索、単一の公開口を実装。ログイン判定（18）と閲覧クローム（17）は対象外（09・10節）</td></tr>
+<tr><td class="k">B. インボックス（11項目）</td><td>実装 11</td><td>本文のみ送信、案件名、画像添付、頼むボタン、件数ピル、空状態、完了したもの、新着バッジ、取り込み導線、状態の返却、通知（差分あり）</td></tr>
+<tr><td class="k">C. ページ部品（16項目）</td><td>実装 16</td><td>判断キットと report.css に集約。赤枠、該当箇所配置、引用＋文字数、ピル選択、まとめてコピー、コピー形式、無返信＝OK、推奨1案、前後並置、文脈付き提示、評価表、決定表、構成図、比較パネル、定型書式、ハイライト</td></tr>
+<tr><td class="k">D. 公開前チェック（4項目）</td><td>実装 4</td><td>lint の3検査＋警告型の進み方</td></tr>
+<tr><td class="k">E. ワークフロー（18項目）</td><td>運用 18</td><td>3行ルール、判断点の配置、前後並置、書かないルール、巡回、状態絵文字、音声→企画案、観点別点検、学習、検査化、診断、前後のレビュー、E2E質問集、設定への明記、完了ゲート、ブラウザ検証、一晩試行、スキルの公開形</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="rpt-sec" id="s9">
+<div class="rpt-num">09</div>
+<h2>検証結果（実測）</h2>
+<table>
+<thead><tr><th>確認</th><th>結果</th></tr></thead>
+<tbody>
+<tr><td>GET /（新しいUI）</td><td>200。新画面の要素（件数ピル等）を確認</td></tr>
+<tr><td>GET /kit/review.js・review.css・report.css</td><td>すべて 200</td></tr>
+<tr><td>GET /api/pages</td><td>200。marks（案件のピン／スター）を含む</td></tr>
+<tr><td>POST /api/projects/marks</td><td>スターの付け外しが保存されることを確認（確認後は元に戻した）</td></tr>
+<tr><td>判断キットの使用例を publish</td><td>公開成功。公開時に lint の図警告が出た（警告のみで止まらないことも確認）</td></tr>
+<tr><td>キットの使用例ページ GET /p/…</td><td>200</td></tr>
+<tr><td>インボックス画像アップロード→ /media/…</td><td>200 image/png で配信</td></tr>
+<tr><td>インボックス投稿（案件名＋画像）</td><td>登録成功。通知メールが yomite@muse.ai に到着し、案件名と画像URLが入っていた</td></tr>
+<tr><td>inbox-fetch の表示と取り込み</td><td>案件名と画像URLつきで表示。取り込み済みにできた</td></tr>
+<tr><td>既読／ページのピン（従来API）</td><td>read・pin とも従来どおり動作</td></tr>
+<tr><td>トークンなし publish</td><td>401（従来どおり）</td></tr>
+<tr><td>D1 migration 0002</td><td>project_marks 作成、inbox に project・image_key 列を追加済み</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="rpt-sec" id="s10">
+<div class="rpt-num">10</div>
+<h2>付けなかったものと、その理由</h2>
+<table>
+<thead><tr><th>項目</th><th>理由</th></tr></thead>
+<tbody>
+<tr><td>読み取りのログイン判定（スライド18）</td><td>原典はパスキー認証あり。Yomite は Izumi様の決定（2026-11-24「今のまま公開でいい」）で公開のままにした。仕組み側の差分として残る</td></tr>
+<tr><td>ページ閲覧クローム（スライド17のホーム／…／プログレスバー）</td><td>公開ページは著者のHTMLをそのまま配信する設計で、外枠を被せると既存ページの見た目と動きを壊すため付けなかった。パンくずと目次は report.css の書式として著者側で付けられる</td></tr>
+<tr><td>みのるんエージェントのUI（スライド47・48）</td><td>HTML共有くんとは別プロダクトのため対象外</td></tr>
+<tr><td>スターの絞り込み</td><td>03節の判断ポイントのとおり。保持まで実装済み</td></tr>
+</tbody>
+</table>
+<div class="rpt-decision">閲覧クロームについて: もし必要でしたら、公開ページのURLに ?chrome=1 を付けたときだけ、ホームボタンとプログレスバーを被せる形なら既存ページを壊さずに足せます。足すかどうかをご判断ください。</div>
+<p>コミットは c422ebc（全面実装）と cd0b6dc（README追記）です。デプロイは Cloudflare コネクタ経由で Worker を更新し、本番で上記の検証を通しました。</p>
+</section>
+
+</div></body></html>
