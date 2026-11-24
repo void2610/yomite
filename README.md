@@ -34,6 +34,14 @@ AI が作った HTML 報告を「読むためだけ」のサイトです。み�
 | `POST /api/inbox` | Access 前提 | スマホの画面から依頼を1件置く `{body}` |
 | `POST /api/inbox/:id/taken` | `PUBLISH_TOKEN` | 依頼を取り込み済みにする |
 
+## デプロイ済み
+
+**公開 URL: https://yomite.void2610.workers.dev**
+
+2026-11-24 に Muse の Cloudflare 公式コネクタ（API）経由でデプロイ済みです。D1 データベース `yomite`（マイグレーション適用済み）、R2 バケット `yomite-pages`、Worker `yomite`、Secret `PUBLISH_TOKEN`（値はリポジトリ外の `.publish-token` に保管、gitignore 済み）を作成済みでございます。動作確認済み: 一覧 UI 200、トークン付き公開、`/p/:slug` 表示、既読化、トークンなし公開は 401。
+
+以下は再デプロイや作り直しが必要な場合の手順です。
+
 ## デプロイ手順（GitHub 連携 / Workers Builds）
 
 手元の端末で wrangler にログインするのではなく、Cloudflare の GitHub 連携でこのリポジトリから直接デプロイします。GitHub へ push するたびに自動でデプロイされます。
