@@ -116,3 +116,13 @@ node scripts/inbox-fetch.mjs            # 未取り込み一覧
 node scripts/inbox-fetch.mjs --take-all # 一覧＋全部を取り込み済みに
 node scripts/inbox-fetch.mjs --take 3   # 1件だけ取り込み済みに
 ```
+
+## スライド照合による全面実装（2026-11-24）
+
+講演の全69枚を画像で読み、`slide-inventory.md` に棚卸ししてから実装した。
+
+- リーダーUIはスライド12の配置（日付セクション＋「Nテーマ・M件」、案件カード、未読ドット、相対時刻、案件チップ、案件のピン／スター）
+- インボックスはスライド21の画面（案件名任意、画像添付、件数ピル、完了したもの）
+- 判断キット: `/kit/review.js`・`/kit/review.css`（使用例は `templates/review-example.html`）、定型書式 `/kit/report.css`（雛形は `templates/report.html`）
+- 公開前 lint: `scripts/lint.mjs`（publish 時に自動で警告）
+- 運用ルール: `docs/workflows.md`、スレッド名係の最小実装 `scripts/session-status.mjs`、E2E質問集の雛形 `templates/e2e-cases.json`
