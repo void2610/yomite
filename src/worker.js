@@ -383,7 +383,7 @@ details.done summary{color:#b8cbdd}
 <main><div id="list">読み込み中…</div>
 <section class="inbox" id="inbox">
 <div class="ib-head"><button class="ib-back" id="ibTop" title="一覧の先頭へ戻る">‹</button><span class="t">インボックス</span><button id="ibReload" title="更新">↻</button></div>
-<div class="ib-sec"><span class="t">Claudeへの依頼</span><span class="line"></span><span class="pill" id="pendCount">0件</span></div>
+<div class="ib-sec"><span class="t">Museへの依頼</span><span class="line"></span><span class="pill" id="pendCount">0件</span></div>
 <div class="compose">
 <textarea id="inboxBody" placeholder="依頼を1つ書いてください"></textarea>
 <select id="inboxProject"><option value="">プロジェクト名（任意）</option></select>
@@ -394,7 +394,7 @@ details.done summary{color:#b8cbdd}
 </div>
 <input type="file" id="imgFile" accept="image/*" hidden>
 <div class="msg" id="inboxMsg"></div>
-<div class="ib-note">送るとすぐにClaudeへ通知が届きます。取り込み状況は下で分かります。</div>
+<div class="ib-note">送るとすぐにMuseへ通知が届きます。取り込み状況は下で分かります。</div>
 </div>
 <div id="pendingList"></div>
 <details class="done" id="doneBox"><summary>完了したもの</summary><div id="doneList"></div></details>
