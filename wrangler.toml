@@ -1,0 +1,20 @@
+name = "html-kyoyu"
+main = "src/worker.js"
+compatibility_date = "2024-11-01"
+
+# D1: `npx wrangler d1 create html-kyoyu` で表示される id に置き換えること
+[[d1_databases]]
+binding = "DB"
+database_name = "html-kyoyu"
+database_id = "REPLACE_ME"
+migrations_dir = "migrations"
+
+# R2: `npx wrangler r2 bucket create html-kyoyu-pages` で作成すること
+[[r2_buckets]]
+binding = "PAGES_BUCKET"
+bucket_name = "html-kyoyu-pages"
+
+# PUBLISH_TOKEN はファイルに書かず secret で設定すること:
+#   npx wrangler secret put PUBLISH_TOKEN
+# ローカル開発では .dev.vars に PUBLISH_TOKEN=dev-token と書く (gitignore 済み)。
+# .dev.vars が無く PUBLISH_TOKEN 未設定の場合、Worker は開発用に認証を素通しする。
