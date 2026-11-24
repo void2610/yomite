@@ -1,4 +1,4 @@
--- HTML共有くん 初期スキーマ
+-- Yomite 初期スキーマ
 CREATE TABLE IF NOT EXISTS pages (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   slug           TEXT NOT NULL UNIQUE,

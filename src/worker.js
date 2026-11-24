@@ -1,4 +1,4 @@
-// HTML共有くん — Cloudflare Worker
+// Yomite — Cloudflare Worker
 // Reader UI (inline) + JSON API. Storage: R2 (HTML files) + D1 (metadata / inbox).
 // Production is meant to sit behind Cloudflare Access; publish & inbox-fetch
 // additionally require the PUBLISH_TOKEN secret (Authorization: Bearer <token>).
@@ -120,7 +120,7 @@ async function takeInbox(id, request, env) {
 const READER_HTML = `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HTML共有くん</title>
+<title>Yomite</title>
 <style>
 :root{color-scheme:light dark}
 *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,"Hiragino Sans",sans-serif;background:#f6f6f4;color:#1c1c1a}
@@ -145,7 +145,7 @@ textarea{width:100%;min-height:90px;padding:10px;border-radius:10px;border:1px s
 button.send{margin-top:8px;padding:10px 18px;border-radius:10px;border:0;background:#2b7fff;color:#fff;font-size:15px;cursor:pointer}
 .msg{font-size:13px;color:#2b7fff;margin-top:6px}
 </style></head><body>
-<header><h1>HTML共有くん <span class="badge" id="unreadBadge" hidden></span></h1>
+<header><h1>Yomite <span class="badge" id="unreadBadge" hidden></span></h1>
 <input type="search" id="q" placeholder="検索（タイトル・概要・案件）"></header>
 <main><div id="list">読み込み中…</div>
 <section class="inbox"><h2>📥 インボックス（スマホから依頼を置く）</h2>

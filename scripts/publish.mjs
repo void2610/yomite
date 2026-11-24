@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 使い方:
-//   HTML_KYOYU_URL=https://html-kyoyu.<your>.workers.dev \
-//   HTML_KYOYU_TOKEN=<PUBLISH_TOKEN> \
+//   YOMITE_URL=https://yomite.<your>.workers.dev \
+//   YOMITE_TOKEN=<PUBLISH_TOKEN> \
 //   node scripts/publish.mjs <file.html> --title "..." --project "..." [--summary "..."] [--decision "..."]
 import { readFile } from "node:fs/promises";
 
@@ -11,13 +11,13 @@ function opt(name) {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] : undefined;
 }
-const base = process.env.HTML_KYOYU_URL;
-const token = process.env.HTML_KYOYU_TOKEN;
+const base = process.env.YOMITE_URL;
+const token = process.env.YOMITE_TOKEN;
 if (!file || !opt("title")) {
   console.error('usage: node scripts/publish.mjs <file.html> --title "..." --project "..." [--summary "..."] [--decision "..."]');
   process.exit(1);
 }
-if (!base) { console.error("HTML_KYOYU_URL が未設定です"); process.exit(1); }
+if (!base) { console.error("YOMITE_URL が未設定です"); process.exit(1); }
 
 const html = await readFile(file, "utf8");
 const res = await fetch(`${base.replace(/\/$/, "")}/api/pages`, {
