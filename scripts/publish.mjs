@@ -12,6 +12,10 @@
 //   :::decision             … 次の ::: までを判断ポイント枠にする
 // .html は旧形式としてそのまま公開できる (移行期間用)。
 import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { dirname, resolve } from "node:path";
 import { lintHtml } from "./lint.mjs";
 
@@ -51,6 +55,16 @@ if (isMd) {
   payload = { format: "html", html: raw };
 }
 
+// OGP 画像 (タイトル入り) を生成して一緒に送る。失敗しても公開は続ける。
+let ogImageB64 = "";
+try {
+  const ogPath = join(tmpdir(), `yomite-og-${process.pid}.png`);
+  await promisify(execFile)("python3", [new URL("./og_image.py", import.meta.url).pathname, opt("title"), ogPath]);
+  ogImageB64 = Buffer.from(await readFile(ogPath)).toString("base64");
+} catch (e) {
+  console.error("⚠ OGP 画像の生成に失敗しました:", e.message);
+}
+
 const res = await fetch(`${base.replace(/\/$/, "")}/api/pages`, {
   method: "POST",
   headers: {
@@ -64,6 +78,7 @@ const res = await fetch(`${base.replace(/\/$/, "")}/api/pages`, {
     summary: opt("summary") || "",
     decision_points: opt("decision") || "",
     ...(opt("slug") ? { slug: opt("slug") } : {}),
+    ...(ogImageB64 ? { og_image_b64: ogImageB64 } : {}),
   }),
 });
 const data = await res.json().catch(() => ({}));

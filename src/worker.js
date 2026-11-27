@@ -85,6 +85,14 @@ async function publishPage(request, env) {
       httpMetadata: { contentType: "text/markdown; charset=utf-8" },
     });
   }
+  if (typeof body.og_image_b64 === "string" && body.og_image_b64) {
+    try {
+      const bin = Uint8Array.from(atob(body.og_image_b64), (c) => c.charCodeAt(0));
+      await env.PAGES_BUCKET.put(`assets/og/${slug}.png`, bin, {
+        httpMetadata: { contentType: "image/png" },
+      });
+    } catch { /* OG 画像の保存失敗は公開を止めない */ }
+  }
   await env.PAGES_BUCKET.put(`pages/${slug}.html`, html, {
     httpMetadata: { contentType: "text/html; charset=utf-8" },
   });
@@ -655,6 +663,12 @@ export default {
     try {
       if (request.method === "GET" && path === "/") {
         return new Response(READER_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
+      }
+      const ogPage = path.match(/^\/og\/([a-z0-9-]+)\.png$/i);
+      if ((request.method === "GET" || request.method === "HEAD") && ogPage) {
+        const obj = (await env.PAGES_BUCKET.get(`assets/og/${ogPage[1]}.png`)) || (await env.PAGES_BUCKET.get("assets/og.png"));
+        if (!obj) return new Response("not found", { status: 404 });
+        return new Response(obj.body, { headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" } });
       }
       if (request.method === "GET" && path === "/kit/review.css") {
         return new Response(REVIEW_CSS, { headers: { "content-type": "text/css; charset=utf-8", "cache-control": "no-cache" } });
