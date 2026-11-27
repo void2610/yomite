@@ -33,6 +33,11 @@ AI が作った HTML 報告を「読むためだけ」のサイトです。み�
 | `GET /api/inbox` | `PUBLISH_TOKEN` | 未取り込みの依頼一覧（Mac 側エージェント用） |
 | `POST /api/inbox` | Access 前提 | スマホの画面から依頼を1件置く `{body}` |
 | `POST /api/inbox/:id/taken` | `PUBLISH_TOKEN` | 依頼を取り込み済みにする |
+| `POST /api/answers/:slug` | なし（ページのリンクが前提） | 判断キットの回答を保存 `{question, choice, comment}`。同じ質問は最新で上書き |
+| `GET /api/answers/:slug` | なし | その記事の回答一覧。ページ側が復元に使う |
+| `GET /api/answers` | `PUBLISH_TOKEN` | 全記事の回答を新しい順に最大200件 |
+
+判断キットの回答はサーバー側 (D1 の `answers` テーブル) に保存されます。ページで選ぶ・書くと自動で送られ、開き直すと復元されます。Muse 側は `scripts/answers.mjs <slug>` または `--all` で読みます。コピーバーは手元の控えとして残してあります。
 
 ## デプロイ済み
 
