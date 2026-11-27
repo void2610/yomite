@@ -298,7 +298,7 @@ html{-webkit-text-size-adjust:100%}
 body{margin:0;background:#edf2f7;color:rgba(0,0,0,.82);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif,"Segoe UI Emoji";font-size:16px;line-height:1.7}
 a{color:#0f83fd}
 header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #e4edf4}
-.hrow{max-width:880px;margin:0 auto;padding:13px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.hrow{max-width:1160px;margin:0 auto;padding:13px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .logo{font-size:22px;font-weight:800;color:#162c49;text-decoration:none;letter-spacing:.02em;background:none;-webkit-text-fill-color:currentColor}
 .today{font-size:13px;color:#8f9faa}
 .msg{font-size:13px;color:#8f9faa}
@@ -307,7 +307,9 @@ header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid 
 .hbtn:hover{border-color:#3ea8ff;color:#0f83fd}
 header input[type="search"],header input[type="text"]{background:#f1f5f9;border:1px solid transparent;border-radius:10px;padding:9px 13px;font-size:14.5px;font-family:inherit;color:rgba(0,0,0,.82);outline:none;min-width:190px}
 header input:focus{background:#fff;border-color:#3ea8ff}
-main{max-width:880px;margin:0 auto;padding:10px 20px 80px}
+main{max-width:1160px;margin:0 auto;padding:10px 20px 80px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:30px 44px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 4px}
 .chip{background:#fff;border:1px solid #d6e3ed;color:#65717b;border-radius:99rem;padding:7px 15px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
 .chip:hover{border-color:#3ea8ff;color:#0f83fd}
@@ -316,7 +318,7 @@ main{max-width:880px;margin:0 auto;padding:10px 20px 80px}
 .sec-head .lbl{font-size:20px;font-weight:800;color:#162c49}
 .sec-head .line{display:none}
 .sec-head .cnt{font-size:13px;color:#8f9faa}
-.art{display:flex;gap:18px;margin:0 0 27px;background:transparent;border:none;box-shadow:none;padding:0}
+.art{display:flex;gap:18px;margin:0;background:transparent;border:none;box-shadow:none;padding:0}
 .art .emo{flex:none;width:72px;min-width:72px;height:72px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:37px;line-height:1}
 .art .tmain{flex:1;min-width:0;padding-top:2px}
 .art a.tt{display:block;font-size:16.5px;font-weight:700;line-height:1.55;color:rgba(0,0,0,.82);text-decoration:none}
@@ -490,7 +492,7 @@ function render(){
         +'</div></div>';
       return row;
     }).join('');
-    return '<div class="sec-head"><span class="lbl">'+secLabel(k)+'</span><span class="line"></span><span class="cnt">'+ps.length+'件</span></div>'+rows;
+    return '<div class="sec-head"><span class="lbl">'+secLabel(k)+'</span><span class="line"></span><span class="cnt">'+ps.length+'件</span></div><div class="grid2">'+rows+'</div>';
   }).join('');
   listEl.querySelectorAll('a[data-slug]').forEach(function(a){a.addEventListener('click',function(){
     PAGES.forEach(function(p){if(p.slug===a.dataset.slug&&!p.read_at)p.read_at=new Date().toISOString()});
