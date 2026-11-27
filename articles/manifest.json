@@ -1,0 +1,119 @@
+[
+  {
+    "slug": "2026-11-27-unity-7-alpha-daowa5",
+    "title": "Unity 7 Alpha 調査レポート",
+    "project": "Unity",
+    "summary": "噂は事実。public alpha 開始済みで最新は7000.0.0a22。今は上げるべきでない",
+    "decision_points": "本線は6.3 LTS維持で次候補は6.7 LTSという方針でよいか",
+    "file": "articles/2026-11-27-unity-7-alpha-daowa5.md",
+    "md_bytes": 29049
+  },
+  {
+    "slug": "2026-11-26-howto-10-e7iipi",
+    "title": "HowTo動画から新たに抜いたコツ10個",
+    "project": "UltraRealFPS",
+    "summary": "既存12件と重ならない、動画のコツ10個",
+    "decision_points": "",
+    "file": "articles/2026-11-26-howto-10-e7iipi.md",
+    "md_bytes": 6152
+  },
+  {
+    "slug": "2026-11-26-howto-2-5zq2s8",
+    "title": "HowTo動画で学んだことと、今の差分（2回目）",
+    "project": "UltraRealFPS",
+    "summary": "前回の差分レポート（12:41）からの変化。差あり5件→2件",
+    "decision_points": "",
+    "file": "articles/2026-11-26-howto-2-5zq2s8.md",
+    "md_bytes": 2285
+  },
+  {
+    "slug": "2026-11-26-howto-8l7sq2",
+    "title": "HowTo動画で学んだことと、今の差分",
+    "project": "UltraRealFPS",
+    "summary": "動画10本の作り方と今の実装を1件ずつ並べたもの。差があるのは5件",
+    "decision_points": "",
+    "file": "articles/2026-11-26-howto-8l7sq2.md",
+    "md_bytes": 2100
+  },
+  {
+    "slug": "2026-11-26-ultrarealfps-2026-11-26-suaou7",
+    "title": "UltraRealFPS レポート差分 — 過去レポートの指摘と現在の実装（2026-11-26）",
+    "project": "UltraRealFPS",
+    "summary": "v1/v2レポートの差分リスト21件の現在地。前提が崩れた点3つと残課題を整理",
+    "decision_points": "屋外HDRIが無いことが唯一残った根幹。無料の屋外HDRIを入れるか、今のブラーで進めるかで進め方が変わります",
+    "file": "articles/2026-11-26-ultrarealfps-2026-11-26-suaou7.md",
+    "md_bytes": 10540
+  },
+  {
+    "slug": "2026-11-24-njwyfn",
+    "title": "提示ゲートの設計 — 計画の承認と実装の分離",
+    "project": "運用設計",
+    "summary": "",
+    "decision_points": "",
+    "file": "articles/2026-11-24-njwyfn.md",
+    "md_bytes": 9579
+  },
+  {
+    "slug": "2026-11-24-ux-6ghj0r",
+    "title": "UX・動線の点検と修正",
+    "project": "Yomite",
+    "summary": "読み手の動線を歩き直し、押せない部品・行き止まり・状態が伝わらない操作19件を修正し本番検証した報告",
+    "decision_points": "スターで絞り込みを足すか（03節）",
+    "file": "articles/2026-11-24-ux-6ghj0r.md",
+    "md_bytes": 6317
+  },
+  {
+    "slug": "2026-11-24-69-qh9tzs",
+    "title": "スライド全69枚 照合と全機能実装の報告",
+    "project": "Yomite",
+    "summary": "全69枚を画像で照合し、リーダーUI・インボックス・判断キット・lint・ワークフロー成果物を実装した報告",
+    "decision_points": "閲覧クローム（?chrome=1）を足すか（10節）／スター絞り込みを足すか（03節）",
+    "file": "articles/2026-11-24-69-qh9tzs.md",
+    "md_bytes": 19276
+  },
+  {
+    "slug": "2026-11-24-44j4hr",
+    "title": "判断キットの使用例",
+    "project": "Yomite",
+    "summary": "スライド25・28・29・31・32・35 の判断UI部品の見本",
+    "decision_points": "",
+    "file": "articles/2026-11-24-44j4hr.md",
+    "md_bytes": 3222
+  },
+  {
+    "slug": "2026-11-24-yomite-ikoriz",
+    "title": "Yomite 完成報告 — 何を作り、どう使うか",
+    "project": "Yomite",
+    "summary": "Yomite の完成報告。構成と使い方と検証結果と今後の運用をまとめた完全版。",
+    "decision_points": "読み取り制限（Cloudflare Access）を付けるか",
+    "file": "articles/2026-11-24-yomite-ikoriz.md",
+    "md_bytes": 22149
+  },
+  {
+    "slug": "2026-11-24-yomite-2gajnf",
+    "title": "Yomite 完成報告 — 何を作り、どう使うか",
+    "project": "Yomite",
+    "summary": "Yomite の完成報告。構成と使い方と検証結果と今後の運用をまとめた完全版。",
+    "decision_points": "読み取り制限（Cloudflare Access）を付けるか",
+    "file": "articles/2026-11-24-yomite-2gajnf.md",
+    "md_bytes": 21675
+  },
+  {
+    "slug": "2026-11-24-yomite-fkad0g",
+    "title": "Yomite 完成報告 — 何を作り、どう使うか",
+    "project": "Yomite",
+    "summary": "Yomite の完成報告。構成と使い方と検証結果と今後の運用をまとめた完全版。",
+    "decision_points": "読み取り制限（Cloudflare Access）を付けるか",
+    "file": "articles/2026-11-24-yomite-fkad0g.md",
+    "md_bytes": 20102
+  },
+  {
+    "slug": "2026-11-24-41pe9p",
+    "title": "サンプルレポート",
+    "project": "動作確認",
+    "summary": "デプロイ検証用のサンプルです",
+    "decision_points": "",
+    "file": "articles/2026-11-24-41pe9p.md",
+    "md_bytes": 376
+  }
+]

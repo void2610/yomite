@@ -98,16 +98,42 @@ npx wrangler dev
 
 ### 報告を公開する
 
+記事は **Markdown で書くのが基本形**（2026-11-27 の md 化以降）。見た目は Yomite 側が
+統一テンプレート（`/kit/report.css` + md 用スタイル）で描くので、書き手は中身だけに集中する。
+Worker は描画結果を `pages/<slug>.html` に、原稿を `pages/<slug>.md` に保存し、
+原稿は `GET /src/<slug>` で取り戻せる（再編集は md から行う）。
+
 ```bash
 export YOMITE_URL=https://yomite.<your>.workers.dev
 export YOMITE_TOKEN=<PUBLISH_TOKEN>
-node scripts/publish.mjs examples/sample-report.html \
+node scripts/publish.mjs examples/sample-report.md \
   --title "サンプル報告" --project "動作確認" \
   --summary "全件合格" --decision "この形式で進めてよいか"
 # → https://.../p/2026-...-xxxxxx が表示される
+# 同じ記事の直しは --slug <slug> を付けると同じ URL で差し替わる
 ```
 
-運用ルール（講演の「3行ルール」）: 結論が3行を超える報告や表を使う報告は HTML 1枚にしてここへ出し、チャットには結論とリンクだけを書く。判断してほしい点は該当箇所に置く。
+md の Yomite 独自形式（`src/markdown.js` が描画）:
+
+```markdown
+:::html
+<div class="rpt-flow">… md で書けない構造は raw HTML で …</div>
+:::
+
+:::html src="parts/flow.html"
+（外部 HTML ファイルの読み込み。publish CLI が送信前に中身へ展開する）
+
+:::decision
+判断してほしい点を該当箇所に置く（中身は md で書ける）
+:::
+```
+
+対応する md 記法: `#`〜`####` 見出し（先頭の `#` タイトルはページ見出しと重なるため取り除かれる。
+`##` が節になり3節以上で目次が自動で付く）、段落、箇条書き・番号リスト・チェックリスト、
+表、引用、`コード` とコードブロック、リンク・画像、`**太字**`、`==ハイライト==`、区切り線。
+`.html` の直接公開も移行期間用に残してあるが、新規の報告は md で書くこと。
+
+運用ルール（講演の「3行ルール」）: 結論が3行を超える報告や表を使う報告は md 1枚にしてここへ出し、チャットには結論とリンクだけを書く。判断してほしい点は該当箇所に置く。
 
 ### インボックスを取り込む（Mac 側）
 
