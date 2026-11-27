@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UltraRealFPS レポート差分 — 過去レポートの指摘と現在の実装（2026-11-26）</title>
+<style>
+  body { font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; line-height: 1.75; color: #1c1c1e; max-width: 880px; margin: 0 auto; padding: 24px 18px 64px; background: #fff; }
+  h1 { font-size: 1.45rem; line-height: 1.4; margin-bottom: 4px; }
+  h2 { font-size: 1.12rem; border-left: 4px solid #444; padding-left: 10px; margin-top: 36px; }
+  .meta { color: #666; font-size: 0.85rem; margin-bottom: 20px; }
+  .decision { background: #fff7e0; border: 1px solid #e3c766; border-radius: 8px; padding: 12px 16px; margin: 18px 0; }
+  .decision b { color: #7a5b00; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.9rem; }
+  th, td { border: 1px solid #ccc; padding: 7px 9px; vertical-align: top; text-align: left; }
+  th { background: #f2f2f4; }
+  .ok { color: #146c2e; font-weight: 600; white-space: nowrap; }
+  .mid { color: #9a6a00; font-weight: 600; white-space: nowrap; }
+  .no { color: #b3261e; font-weight: 600; white-space: nowrap; }
+  .rev { color: #5b3ea8; font-weight: 600; white-space: nowrap; }
+  ul { padding-left: 1.3em; }
+  li { margin: 5px 0; }
+  .small { font-size: 0.85rem; color: #555; }
+</style>
+</head>
+<body>
+
+<h1>UltraRealFPS レポート差分 — 過去レポートの指摘と現在の実装</h1>
+<div class="meta">2026-11-26 時点。比較対象: 研究レポート（11/24）、HowTo 差分 v1（11/25）、ライティング調査 v2（11/25）。現在の実装は M51 終了時点（git 09f82b1）＋進行中の M52。</div>
+
+<div class="decision">
+<b>判断ポイント:</b> 唯一残った根幹は「屋外の空の素材が無い」ことです。ドームも SkyLight も室内ホールの HDRI が元で、参照作の土台である「実写の曇天 HDRI」はプロジェクト内に存在しません（M48 で確認）。Poly Haven 等の無料の屋外 HDRI を入れるかどうかで、この先の進め方が変わります。
+</div>
+
+<h2>要約</h2>
+<ul>
+  <li>ライティング系の主要な差分は大半が解消しました。窓の無い部屋という構造的な欠落、主光源の電球、Shadow Contrast の逆向き、HWRT／MegaLights の未確認、ローカル露出の未使用は、いずれも現在は解消しています。</li>
+  <li>一方で、レポート側の前提が実物と違っていた点が3つ見つかりました。下の「前提が崩れた点」にまとめています。特に「窓ポータルは定石」は M51 で実測検証した結果、このシーンでは逆効果と確定しました。</li>
+  <li>現在の残課題は、空の素材（屋外 HDRI の不在）、窓が画面で一番明るい要素になっていないこと（M52 で対応中）、露出がオートのままであること、マテリアルの汚しの薄さです。</li>
+</ul>
+
+<h2>前提の変化（レポートの「現行」は旧シーン）</h2>
+<ul>
+  <li>両レポートの現行スナップショットは、窓の無いテストルーム＋廊下の時代のものです。現在は Izumi様のご指示でシーンは廃ビルと銃とプレイヤーだけになり（M45）、構図は北壁の窓開口越しの室内視点で固定、成果物は写真1枚です。</li>
+  <li>電球の practical は器具ごと削除済みで、現在のシーンに practical はありません。v2 差分 #9（practical の形の確認）は対象自体が消えました。</li>
+  <li>カメラの動き・ラグ・FOV は Izumi様の裁定で参照対象から外れています。音も主題外です。この2領域の差分は進んでいませんが、方針として意図的に外したものです。</li>
+</ul>
+
+<h2>ライティング調査 v2 の差分リスト（10件）の現在地</h2>
+<table>
+<tr><th>#</th><th>レポートの指摘</th><th>現在</th><th>状態</th></tr>
+<tr><td>1</td><td>窓に RectLight ポータルが無い。開口に Rect を嵌めるのが定石</td><td>M51 で北窓2開口に実装して実測。室内が約1EV持ち上がって平たくなり、強さ・減衰・間接を変えても一切変わらず、撤去でのみ戻った。このシーンでは不成立と確定し、撤去済み</td><td class="rev">検証のうえ不採用</td></tr>
+<tr><td>2</td><td>Shadow Contrast が手本と逆（現行 1.15、手本 0.6）</td><td>0.6 に是正済み（M31）</td><td class="ok">解消</td></tr>
+<tr><td>3</td><td>SkyLight 2.20 は校正なきブースト。校正法で決めるべき</td><td>M33 で校正法（ドームの SkyBrightness と一致）により 4.6 に確定。ただし実測すると光量の寄与は約0.5 lux で、室内の光の実体ではありませんでした。キューブマップ解像度は 128 のまま（推奨 256〜512 は未実施）</td><td class="mid">校正は解消／解像度は残</td></tr>
+<tr><td>4</td><td>影の柔らかさの主機構と HWRT／MegaLights の状態が未確認</td><td>HWRT ON、MegaLights ON、ライトごとの RT 影を確認済み。太陽の SourceAngle は 8.0、Samples Per Pixel は 4</td><td class="ok">解消</td></tr>
+<tr><td>5</td><td>Lumen のノイズ対策が未適用（HemisphereProbeResolution 32、SPP 2〜4）</td><td>SPP は太陽で 4 を実施。HemisphereProbeResolution 32 は未適用のまま</td><td class="mid">一部残</td></tr>
+<tr><td>6</td><td>露出が自動のまま。実測でゾーン差を確認すべき</td><td>ゾーン差は M33 で 5.43 EV（設計 4〜6 EV）を実測し成立を確認。ただし露出自体は今もオート（Histogram、範囲 5〜9 EV、補正 −0.3）で、Manual 固定は未採用</td><td class="mid">実測は解消／固定は未採用</td></tr>
+<tr><td>7</td><td>バウンス手段が SkyLight 増幅に偏っている。Diffuse Color Boost を使うべき</td><td>PPV の Diffuse Color Boost 1.6 を使用中（Faucher の実践値 2〜5 には届かない）</td><td class="mid">部分的に解消</td></tr>
+<tr><td>8</td><td>アルベド側の棚卸しが無い</td><td>建物マテリアル21件に Min Roughness 0.35／Specular 0.38 を設定（M46）。アルベド自体の棚卸しは未実施</td><td class="mid">一部残</td></tr>
+<tr><td>9</td><td>practical の形の値が未確認</td><td>電球が M45 の全削除で消滅。対象なし</td><td class="ok">対象消滅</td></tr>
+<tr><td>10</td><td>窓の光の筋（ボリューメトリック）が無い</td><td>太陽の Volumetric Scattering は 1.6 あるが、窓から差す光の筋としては未成立のまま（静止画前提で優先度は下位のまま）</td><td class="no">未解消</td></tr>
+</table>
+
+<h2>HowTo 差分 v1 の差分リスト（11件）の現在地</h2>
+<table>
+<tr><th>#</th><th>レポートの指摘</th><th>現在</th><th>状態</th></tr>
+<tr><td>1</td><td>窓が無い。外景が存在しない（最大の差分）</td><td>M32 で建物を導入し、M50 で北壁の窓開口に構図を確定。ただし外景は「曇天 HDRI の可視化」ではなく、室内ホール HDRI を強くブラーしたドームで形を消した明暗として処理しています。参照作の「曇り空＋近景シルエット」とは別物です</td><td class="mid">構造は解消／中身は代替処理</td></tr>
+<tr><td>2</td><td>主光源が裸電球のポイント光</td><td>電球は消滅。主たる光は東の開口から入る太陽とそのバウンス</td><td class="ok">解消</td></tr>
+<tr><td>3</td><td>SkyLight 0.12 は役割不足。HDRI を可視化すべき</td><td>強度は 4.6 まで上がりましたが、実測の光量は約0.5 lux で「量の主体」にはなっていません。可視化はドーム側で行われていますが、その素材が屋外の空ではありません（下記の前提崩れ参照）</td><td class="rev">前提が崩れた</td></tr>
+<tr><td>4</td><td>露出のゾーン差設計が無い</td><td>M33 で 5.43 EV を実測し、設計として成立</td><td class="ok">解消</td></tr>
+<tr><td>5</td><td>ローカル露出を使っていない</td><td>使用中。Highlight Contrast 0.35／Shadow Contrast 0.66</td><td class="ok">解消</td></tr>
+<tr><td>6</td><td>自動露出のクランプと測光マスクが未整備</td><td>範囲は 5〜9 EV にクランプ済み。Metering Mask は未使用</td><td class="mid">一部残</td></tr>
+<tr><td>7</td><td>ハレーション／レンズダートが無い</td><td>ダートは当時から入っていました（実効 0.45）。Bloom の実効は 0.45 で、Karim の実践値 1〜1.5 より弱いままです</td><td class="mid">一部残</td></tr>
+<tr><td>8</td><td>色収差が露出連動でない</td><td>未対応のまま（優先度 小のまま）</td><td class="no">未解消</td></tr>
+<tr><td>9</td><td>FOV 120 は実機の下限域</td><td>変更なし。カメラ系は裁定で参照対象外</td><td class="mid">対象外</td></tr>
+<tr><td>10</td><td>ラグのデッドゾーン方式が未検証</td><td>未検証のまま。同上、対象外</td><td class="mid">対象外</td></tr>
+<tr><td>11</td><td>外景の作り込みコストは小さい（朗報）</td><td>前提が崩れました。屋外 HDRI が無く、外景オブジェクトは Izumi様のご指示で全削除済み。現状はドームのブラーで処理しています</td><td class="rev">前提が崩れた</td></tr>
+</table>
+
+<h2>レポートの前提が崩れた点（3つ）</h2>
+<ul>
+  <li><b>空の素材の素性。</b> v1 は「SkyLight が掴んでいる Poly Haven の曇天 HDRI を可視化すればよい」としましたが、実物を確認すると SkyLight のソースは室内ホールの HDRI（T_Env_Industrial）で、屋外の空の素材はプロジェクト内に存在しませんでした（M48）。参照作の「空と環境光は実写から取る」という土台が、素材の時点で未充足です。</li>
+  <li><b>窓ポータルの定石。</b> Faucher と Averkin が揃って定石とする開口ポータルは、M51 で実測した限りこのシーンでは逆効果でした。ポータル2灯の存在自体が室内を約1EV持ち上げて平たくし、値の調整では一切変わりませんでした。手本の部屋とは間接光の成り立ちが違うためと考えられます。</li>
+  <li><b>SkyLight が量の主体、という整理。</b> 校正（4.6）後の実測でも SkyLight の寄与は約0.5 lux で、室内の明るさの実体は太陽の直接光とそのバウンスでした。曇天リグの教科書的な役割分担は、この HDRI とこの建物の組み合わせでは成立していません。</li>
+</ul>
+
+<h2>現在の主要値（M51 終了時点）</h2>
+<table>
+<tr><th>項目</th><th>値</th></tr>
+<tr><td>太陽</td><td>2,500 lux／俯角 −38°／方位 −174°（東の開口から西へ）／7,000 K／Source Angle 8.0／SPP 4／RT 影</td></tr>
+<tr><td>SkyLight</td><td>4.6（Specified Cubemap、元は室内ホール HDRI、解像度 128）／光量の実測寄与は約0.5 lux</td></tr>
+<tr><td>ドーム（窓の外の見た目）</td><td>ホール HDRI のブラー複製（最大テクスチャ 32）／SkyBrightness 4.6 → M52 で 7.0 を試行中／Power 0.78／彩度 0.6</td></tr>
+<tr><td>RectLight</td><td>西面の4灯のみ（600／間接 0.5）。北窓ポータルは撤去済み</td></tr>
+<tr><td>露出</td><td>オート（Histogram、5〜9 EV、補正 −0.3）。ゾーン差の実測 5.43 EV（M33）</td></tr>
+<tr><td>ローカル露出</td><td>Highlight Contrast 0.35／Shadow Contrast 0.66。全体の Shadow Contrast は 0.6</td></tr>
+<tr><td>Lumen</td><td>Diffuse Color Boost 1.6。HWRT ON、MegaLights ON</td></tr>
+<tr><td>フォグ</td><td>密度 0.0022</td></tr>
+<tr><td>センサー（劣化）</td><td>歪み K 0.24／色収差 0.02／ノイズは暗部連動（指数 2.6、量 0.036、肩 0.12）</td></tr>
+</table>
+
+<h2>残課題（深刻さ順）</h2>
+<ul>
+  <li><b>屋外 HDRI が無い。</b> 空の素材そのものの問題で、ライティングの調整では埋まりません。</li>
+  <li><b>窓が画面で一番明るい要素になっていない。</b> M51 終了時点では床の太陽のパッチの方が窓より明るい状態です。M52 でドームを 7.0 へ上げて試行中です。</li>
+  <li><b>露出がオートのまま。</b> ゾーン差の実測は済んでいますが、確定画の Manual 固定は未採用です。</li>
+  <li><b>マテリアルの汚しの非対称性が薄い。</b> 研究レポート §2.1 の指摘（実写感は汚れの非対称性で決まる）に対して、建物の面はまだ均一で綺麗です。Izumi様のご判定でも、M33 の床が一番リアルだった理由は「形のある難しい物が無い面は質感と光だけで通る」ためでした。</li>
+  <li><b>細部。</b> SkyLight のキューブマップ解像度 128（推奨 256〜512）、HemisphereProbeResolution 32 の未適用、Bloom 実効 0.45 の弱さ。</li>
+</ul>
+
+<p class="small">根拠: 各マイルストーンの PROGRESS.md（m33work／m45work／m48work／m51work ほか）と ~/MEMORY.md の記録、M51 での実機撮影の領域輝度実測。数値はすべて実測または読み戻しで確認したもののみを載せています。</p>
+
+</body>
+</html>

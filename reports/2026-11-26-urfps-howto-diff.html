@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HowTo動画で学んだことと、今の差分</title>
+<style>
+  body { font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; line-height: 1.8; font-size: 17px; color: #1c1c1e; max-width: 820px; margin: 0 auto; padding: 24px 18px 64px; background: #fff; }
+  h1 { font-size: 1.4rem; line-height: 1.4; }
+  .lead { margin: 16px 0 8px; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+  th, td { border: 1px solid #bbb; padding: 10px 12px; vertical-align: top; text-align: left; }
+  th { background: #f2f2f4; }
+  td.diff { white-space: nowrap; font-weight: 700; width: 5.5em; }
+  .same { color: #146c2e; }
+  .gap { color: #b3261e; }
+  .half { color: #9a6a00; }
+  .who { color: #666; font-size: 0.85em; }
+</style>
+</head>
+<body>
+
+<h1>HowTo動画で学んだことと、今の差分</h1>
+<p class="lead">動画10本（Karim Yasser、William Faucher、Andrew Averkin ほか）から抜いた作り方と、今の実装を並べたものです。差があるのは10件中5件です。</p>
+
+<table>
+<thead>
+<tr><th>動画で学んだこと</th><th>今</th><th>差</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td>窓の開口に RectLight を嵌めて、窓の形の光を入れる <span class="who">（Faucher／Averkin）</span></td>
+  <td>北の窓では室内全体が明るくなって平たくなり、撤去した。西面の4灯だけ残っている</td>
+  <td class="diff gap">差あり</td>
+</tr>
+<tr>
+  <td>曇天は SkyLight が光の量を担い、太陽は形と影だけ <span class="who">（Averkin ほか）</span></td>
+  <td>逆になっている。量も太陽が担っていて、SkyLight は光としてほぼ効いていない</td>
+  <td class="diff gap">差あり</td>
+</tr>
+<tr>
+  <td>SkyLight の強さは「空そのものの明るさ」＝1.0 が基準 <span class="who">（Karim）</span></td>
+  <td>4.6</td>
+  <td class="diff gap">差あり</td>
+</tr>
+<tr>
+  <td>窓の外は HDRI の空を見せる <span class="who">（Faucher）</span></td>
+  <td>室内ホールの HDRI をぼかしたもの。屋外の空ではない。曇天 HDRI は取得済みで、差し替えを進めている</td>
+  <td class="diff gap">差あり</td>
+</tr>
+<tr>
+  <td>露出は手動で固定する <span class="who">（Faucher／Averkin／Tasquin）</span></td>
+  <td>オートのまま</td>
+  <td class="diff gap">差あり</td>
+</tr>
+<tr>
+  <td>バウンスは Diffuse Color Boost 2〜5 で稼ぐ <span class="who">（Faucher）</span></td>
+  <td>1.6</td>
+  <td class="diff half">少し差</td>
+</tr>
+<tr>
+  <td>SkyLight の解像度は 256〜512 <span class="who">（Karim）</span></td>
+  <td>128</td>
+  <td class="diff half">少し差</td>
+</tr>
+<tr>
+  <td>Lumen のノイズ対策に解像度 32 を入れる <span class="who">（Karim）</span></td>
+  <td>未適用</td>
+  <td class="diff half">少し差</td>
+</tr>
+<tr>
+  <td>影のコントラストは 0.6 で暗部を開く <span class="who">（Karim）</span></td>
+  <td>0.6</td>
+  <td class="diff same">同じ</td>
+</tr>
+<tr>
+  <td>太陽の Source Angle は 5〜10 で影を柔らかくする <span class="who">（Faucher）</span></td>
+  <td>8.0</td>
+  <td class="diff same">同じ</td>
+</tr>
+<tr>
+  <td>影はレイトレース、サンプルは 2〜4 <span class="who">（Averkin／TUF）</span></td>
+  <td>レイトレースで、太陽はサンプル 4</td>
+  <td class="diff same">同じ</td>
+</tr>
+<tr>
+  <td>MegaLights とハードウェアレイトレースが前提 <span class="who">（Karim／TUF）</span></td>
+  <td>両方とも有効</td>
+  <td class="diff same">同じ</td>
+</tr>
+</tbody>
+</table>
+
+<p>一番大きい差は、窓の光の入れ方です。動画の定石であるポータルがこのシーンでは効かず、光の量も SkyLight ではなく太陽が担っています。この2つは空の素材（HDRI）とつながっていて、曇天 HDRI への差し替えが済むと見え方が変わるはずです。</p>
+
+</body>
+</html>
