@@ -201,7 +201,7 @@ export function renderMarkdown(md) {
         "<tr>" + r.map((c, idx) => idx === 0
           ? `<td class="k2">${inline(c, stash)}</td>`
           : `<td>${inline(c, stash)}</td>`).join("") + "</tr>").join("");
-      out.push(`<table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`);
+      out.push(`<div class="tblwrap"><table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table></div>`);
       continue;
     }
     if (/^\s*>\s?/.test(line)) {
