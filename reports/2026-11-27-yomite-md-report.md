@@ -1,16 +1,23 @@
 # Yomite を Markdown 中心に作り替えました
 
-報告は md で書き、見た目は Yomite 側で統一する形に移行しました。既存記事13件もすべて md へ書き直して再公開済みです。
+この報告自体が新しい書き方の実物です。md で書き、流れ図は外部ファイル読み込み、判断は判断キットの実物で置いてあります。
 
-## 書き方
-
-- 記事は `.md` で書きます。公開すると Yomite の統一テンプレート（目次つき）で描かれます
-- 見出し・表・リスト・引用・コード・リンク・画像に加えて `==ハイライト==` が使えます
-- 特殊な部品が要るときは独自形式で HTML を差し込めます
+## 何が変わったか
 
 :::html
-<div class="rpt-flow"><span class="rpt-step">md で書く</span><span class="rpt-arrow">→</span><span class="rpt-step">publish CLI が HTML 部品を展開</span><span class="rpt-arrow">→</span><span class="rpt-step">Yomite が統一デザインで描画</span></div>
+<div class="rv-ba">
+<div class="rv-before"><span class="rv-ba-badge">これまで（HTML 手書き）</span>
+<p>見出しも表も箱も毎回 HTML で組み、見た目は記事ごとにばらつく。少し直すにもタグを触る必要があった</p></div>
+<div class="rv-after"><span class="rv-ba-badge">これから（md）</span>
+<p>本文は md で書くだけ。見た目は Yomite 側の統一テンプレートが引き受け、目次も自動で付く</p></div>
+</div>
 :::
+
+## 流れ（外部ファイル読み込みの実物）
+
+下の流れ図は、この md には書かれておらず `:::html src=` で別ファイルを読み込んだものです。
+
+:::html src="yomite-md-flow.html"
 
 ## 独自形式は3種類
 
@@ -20,10 +27,25 @@
 | `:::html src="部品.html"` | 別ファイルの HTML 部品を読み込む（公開時に展開） |
 | `:::decision` … `:::` | 判断ポイントの赤枠。中身は md で書ける |
 
-:::decision
-### 運用のお願い
+通常の md 記法（見出し・表・リスト・引用・コード・リンク・画像）と `==ハイライト==` もそのまま使えます。
 
-今後の報告は md で書いて Yomite へ出します。この運用で進めてよいかご確認ください。
+## 判断はこの場で（判断キットの実物）
+
+:::html
+<div class="rv-item" data-q="今後の報告は md で書いて Yomite へ出す運用でよいか">
+<div class="rv-num">判</div>
+<h3>今後の報告の出し方<span class="rv-badge">判断</span></h3>
+<div class="rv-q">今後の報告は md で書いて Yomite へ出す運用でよいか</div>
+<div class="rv-choices">
+<button class="rv-opt" data-recommend>このまま進める<span class="rv-rec">おすすめ</span></button>
+<button class="rv-opt">まだ HTML のほうがよい</button>
+</div>
+<textarea class="rv-comment" placeholder="コメント（任意）"></textarea>
+</div>
+<div class="rv-copybar">
+<button class="rv-copy">選んだ結果をまとめてコピー</button>
+<pre class="rv-out"></pre>
+</div>
 :::
 
 ## 移行の結果
