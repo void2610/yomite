@@ -33,7 +33,7 @@ async function listPages(request, env) {
   const url = new URL(request.url);
   const project = url.searchParams.get("project");
   const q = url.searchParams.get("q");
-  let sql = "SELECT id, slug, title, project, summary, decision_points, created_at, updated_at, pinned, read_at FROM pages";
+  let sql = "SELECT id, slug, title, project, summary, decision_points, created_at, updated_at, pinned, read_at, emoji FROM pages";
   const conds = [];
   const binds = [];
   if (project) { conds.push("project = ?"); binds.push(project); }
@@ -72,7 +72,7 @@ async function publishPage(request, env) {
   if (!checkToken(request, env)) return json({ error: "unauthorized" }, 401);
   let body;
   try { body = await request.json(); } catch { return json({ error: "invalid json" }, 400); }
-  const { title, project, summary, decision_points } = body || {};
+  const { title, project, summary, decision_points, emoji } = body || {};
   const md = body && typeof body.md === "string" ? body.md : null;
   let html = body && typeof body.html === "string" ? body.html : null;
   if (!title || (!html && md === null)) return json({ error: "title and html (or md) are required" }, 400);
@@ -80,7 +80,7 @@ async function publishPage(request, env) {
   if (md !== null) {
     // md 原稿が正。見た目は Yomite 側の統一テンプレートで描き、描画結果を .html に、
     // 原稿そのものを .md に保存する (再編集は .md から行う)。
-    html = renderPageFromMd({ title, project, summary, decisionPoints: decision_points, md, slug });
+    html = renderPageFromMd({ title, project, summary, decisionPoints: decision_points, md, slug, emoji: emoji || '' });
     await env.PAGES_BUCKET.put(`pages/${slug}.md`, md, {
       httpMetadata: { contentType: "text/markdown; charset=utf-8" },
     });
@@ -97,12 +97,12 @@ async function publishPage(request, env) {
     httpMetadata: { contentType: "text/html; charset=utf-8" },
   });
   await env.DB.prepare(
-    `INSERT INTO pages (slug, title, project, summary, decision_points)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO pages (slug, title, project, summary, decision_points, emoji)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(slug) DO UPDATE SET title=excluded.title, project=excluded.project,
-       summary=excluded.summary, decision_points=excluded.decision_points,
+       summary=excluded.summary, decision_points=excluded.decision_points, emoji=excluded.emoji,
        updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')`
-  ).bind(slug, title, project || "未分類", summary || "", decision_points || "").run();
+  ).bind(slug, title, project || "未分類", summary || "", decision_points || "", emoji || "").run();
   return json({ slug, url: `/p/${slug}`, format: md !== null ? "md" : "html" }, 201);
 }
 
@@ -408,6 +408,30 @@ details.done summary{color:#b8cbdd}
 .chipfile{background:#1d3247;color:#45bcd8}
 .ib-back{color:#c9d8e6}
 }
+
+/* フィード表示 (zenn 風): 1列・大きめ文字・絵文字タイル */
+main{max-width:840px}
+body{font-size:16.5px}
+.chip{font-size:14.5px;padding:8px 15px}
+.sec-head .lbl{font-size:19px}
+.art{display:flex;gap:15px;background:#fff;border-radius:16px;padding:17px 19px;margin:0 0 13px;box-shadow:0 2px 10px rgba(30,60,90,.07)}
+.art .emo{flex:none;width:62px;height:62px;border-radius:15px;background:#e8f2fa;display:flex;align-items:center;justify-content:center;font-size:33px;line-height:1}
+.art .tmain{flex:1;min-width:0}
+.art a.tt{display:block;font-size:17.5px;font-weight:700;line-height:1.5;color:inherit;text-decoration:none}
+.art.read a.tt{font-weight:500;color:#63798e}
+.art .tsum{font-size:14px;color:#5b7186;line-height:1.6;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.art .meta{display:flex;align-items:center;gap:9px;margin-top:8px;font-size:12.5px;color:#5b7186;flex-wrap:wrap}
+.art .pj{background:#e8f2fa;color:#0e7ea4;font-weight:700;border-radius:999px;padding:2px 10px}
+.art .new{color:#17a2b8;font-weight:700}
+.art .dec{margin:9px 0 0}
+@media (prefers-color-scheme: dark){
+.art{background:#152231}
+.art .emo{background:#1d3247}
+.art.read a.tt{color:#63798e}
+.art .tsum{color:#93a9bf}
+.art .meta{color:#93a9bf}
+.art .pj{background:#1d3247;color:#45bcd8}
+}
 </style></head><body>
 <header>
 <div class="hrow"><a class="logo" href="/" title="トップ（最新の状態で開き直す）">Yomite</a>
@@ -504,38 +528,23 @@ function render(){
   var keys=Object.keys(secs).sort().reverse();
   listEl.innerHTML=keys.map(function(k){
     var ps=secs[k];
-    var byProj={},order=[];
-    ps.forEach(function(p){if(!byProj[p.project]){byProj[p.project]=[];order.push(p.project)}byProj[p.project].push(p)});
-    order.sort(function(a,b){
-      var pa=markOf(a).pinned?0:1,pb=markOf(b).pinned?0:1;
-      if(pa!==pb)return pa-pb;
-      return byProj[b][0].created_at<byProj[a][0].created_at?-1:1;
-    });
-    var cards=order.map(function(proj){
-      var items=byProj[proj],m=markOf(proj),ckey=k+'|'+proj;
-      var rows=items.map(function(p,i){
-        var row='<div class="prow'+(p.read_at?' read':'')+'">'
-          +'<span class="ud'+(p.read_at?' read':'')+'"></span>'
-          +'<div class="tmain"><a class="tt" href="/p/'+esc(p.slug)+'" data-slug="'+esc(p.slug)+'">'+esc(p.title)+'</a>'
-          +(p.summary?'<div class="tsum">'+esc(p.summary)+'</div>':'')+'</div>'
-          +'<span class="tm">'+relTime(p.created_at)+'</span>'
-          +'<button class="icobtn pin ppin'+(p.pinned?' on':'')+'" data-pinpage="'+esc(p.slug)+'" title="ページをピン留め">📌</button></div>';
-        if(p.decision_points)row+='<div class="dec">⚠ 判断ポイント: '+esc(p.decision_points)+'</div>';
-        if(i>=4)return '<div class="extra"'+(EXP[ckey]?'':' style="display:none"')+'>'+row+'</div>';
-        return '<div>'+row+'</div>';
-      }).join('');
-      var more=items.length>4?'<button class="more" data-card="'+esc(ckey)+'">'+(EXP[ckey]?'閉じる':'他 '+(items.length-4)+' 件を表示 ›')+'</button>':'';
-      return '<div class="pcard"><div class="ph"><span class="pt">'+esc(proj)+'</span>'
-        +'<span class="pc">'+items.length+'件</span>'
-        +'<button class="icobtn pin'+(m.pinned?' on':'')+'" data-pinproj="'+esc(proj)+'" title="案件をピン留め">📌</button>'
-        +'<button class="icobtn star'+(m.starred?' on':'')+'" data-starproj="'+esc(proj)+'" title="スター">'+(m.starred?'★':'☆')+'</button></div>'
-        +rows+more+'</div>';
+    var rows=ps.map(function(p){
+      var row='<div class="art'+(p.read_at?' read':'')+'">'
+        +'<div class="emo">'+esc(p.emoji||'📄')+'</div>'
+        +'<div class="tmain"><a class="tt" href="/p/'+esc(p.slug)+'" data-slug="'+esc(p.slug)+'">'+esc(p.title)+'</a>'
+        +(p.summary?'<div class="tsum">'+esc(p.summary)+'</div>':'')
+        +'<div class="meta"><span class="pj">'+esc(p.project)+'</span><span>'+relTime(p.created_at)+'</span>'
+        +(p.read_at?'':'<span class="new">● 未読</span>')
+        +'<button class="icobtn pin ppin'+(p.pinned?' on':'')+'" data-pinpage="'+esc(p.slug)+'" title="ページをピン留め">📌</button></div>'
+        +(p.decision_points?'<div class="dec">⚠ 判断ポイント: '+esc(p.decision_points)+'</div>':'')
+        +'</div></div>';
+      return row;
     }).join('');
-    return '<div class="sec-head"><span class="lbl">'+secLabel(k)+'</span><span class="line"></span><span class="cnt">'+order.length+'テーマ・'+ps.length+'件</span></div><div class="grid">'+cards+'</div>';
+    return '<div class="sec-head"><span class="lbl">'+secLabel(k)+'</span><span class="line"></span><span class="cnt">'+ps.length+'件</span></div>'+rows;
   }).join('');
   listEl.querySelectorAll('a[data-slug]').forEach(function(a){a.addEventListener('click',function(){
     PAGES.forEach(function(p){if(p.slug===a.dataset.slug&&!p.read_at)p.read_at=new Date().toISOString()});
-    var row=a.closest('.prow');if(row){row.classList.add('read');var ud=row.querySelector('.ud');if(ud)ud.classList.add('read')}
+    var row=a.closest('.art');if(row)row.classList.add('read')
     fetch('/api/pages/'+a.dataset.slug+'/read',{method:'POST'}).catch(function(){});
   })});
   listEl.querySelectorAll('[data-pinpage]').forEach(function(b){b.addEventListener('click',async function(){

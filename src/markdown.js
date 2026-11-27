@@ -11,6 +11,7 @@
 // ## が節見出しになり、目次は ## が3つ以上あるとき自動で付く。
 
 export const MD_CSS = `
+.ymd-emo{margin-right:10px}
 .ymd h3{font-size:17px;color:var(--rpt-heading);margin:22px 0 6px}
 .ymd h4{font-size:15px;color:var(--rpt-heading);margin:18px 0 4px}
 .ymd p{margin:8px 0}
@@ -237,7 +238,7 @@ export function renderMarkdown(md) {
 }
 
 // md 原稿1本 → Yomite の統一ページテンプレートに載せた完成 HTML
-export function renderPageFromMd({ title, project, summary, decisionPoints, md, dateStr, slug }) {
+export function renderPageFromMd({ title, project, summary, decisionPoints, md, dateStr, slug, emoji }) {
   const { html, toc } = renderMarkdown(md);
   const date = dateStr || new Date().toISOString().slice(0, 10);
   const tocHtml = toc.length >= 3
@@ -266,7 +267,7 @@ ${slug ? `<meta property="og:image" content="https://yomite.void2610.workers.dev
 <style>${MD_CSS}</style>
 </head><body><div class="rpt ymd">
 <div class="rpt-crumb"><a href="/">${esc(project || "未分類")}</a> ／ Yomite</div>
-<h1>${esc(title)}</h1>
+<h1>${emoji ? `<span class="ymd-emo">${esc(emoji)}</span>` : ""}${esc(title)}</h1>
 ${summary ? `<div class="rpt-sub">${esc(summary)}</div>` : ""}
 <div class="rpt-meta">${esc(date)} 時点の報告です。原稿は Markdown で、見た目は Yomite が統一しています。</div>
 ${decisionHtml}

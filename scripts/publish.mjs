@@ -78,6 +78,7 @@ const res = await fetch(`${base.replace(/\/$/, "")}/api/pages`, {
     summary: opt("summary") || "",
     decision_points: opt("decision") || "",
     ...(opt("slug") ? { slug: opt("slug") } : {}),
+    ...(opt("emoji") ? { emoji: opt("emoji") } : {}),
     ...(ogImageB64 ? { og_image_b64: ogImageB64 } : {}),
   }),
 });
