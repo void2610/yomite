@@ -461,6 +461,9 @@ details.done .ib-item .b{color:#65717b}
 details.done summary{color:#a4bcd5}
 details.done .ib-item .b{color:#a4bcd5}
 }
+
+.art{cursor:pointer}
+.art:hover a.tt{text-decoration:underline}
 </style></head><body>
 <header>
 <div class="hrow"><a class="logo" href="/" title="トップ（最新の状態で開き直す）">Yomite</a>
@@ -573,6 +576,10 @@ function render(){
     PAGES.forEach(function(p){if(p.slug===a.dataset.slug&&!p.read_at)p.read_at=new Date().toISOString()});
     var row=a.closest('.art');if(row)row.classList.add('read')
     fetch('/api/pages/'+a.dataset.slug+'/read',{method:'POST'}).catch(function(){});
+  })});
+  listEl.querySelectorAll('.art').forEach(function(row){row.addEventListener('click',function(ev){
+    if(ev.target.closest('[data-pinpage]')||ev.target.closest('a'))return;
+    var a=row.querySelector('a[data-slug]');if(a){a.click();}
   })});
   listEl.querySelectorAll('[data-pinpage]').forEach(function(b){b.addEventListener('click',async function(){
     b.disabled=true;
