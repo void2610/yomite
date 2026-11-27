@@ -42,10 +42,6 @@
 </div>
 <textarea class="rv-comment" placeholder="コメント（任意）"></textarea>
 </div>
-<div class="rv-copybar">
-<button class="rv-copy">選んだ結果をまとめてコピー</button>
-<pre class="rv-out"></pre>
-</div>
 :::
 
 ## 選択はサーバーに残ります
