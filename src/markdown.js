@@ -237,7 +237,7 @@ export function renderMarkdown(md) {
 }
 
 // md 原稿1本 → Yomite の統一ページテンプレートに載せた完成 HTML
-export function renderPageFromMd({ title, project, summary, decisionPoints, md, dateStr }) {
+export function renderPageFromMd({ title, project, summary, decisionPoints, md, dateStr, slug }) {
   const { html, toc } = renderMarkdown(md);
   const date = dateStr || new Date().toISOString().slice(0, 10);
   const tocHtml = toc.length >= 3
@@ -251,6 +251,16 @@ export function renderPageFromMd({ title, project, summary, decisionPoints, md, 
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)} | Yomite</title>
+<meta name="description" content="${esc(summary || title)}">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Yomite">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(summary || title)}">
+${slug ? `<meta property="og:url" content="https://yomite.void2610.workers.dev/p/${slug}">` : ""}
+<meta property="og:image" content="https://yomite.void2610.workers.dev/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/kit/report.css">
 <link rel="stylesheet" href="/kit/review.css">
 <style>${MD_CSS}</style>

@@ -4,6 +4,7 @@
 // Publish & inbox-fetch require the PUBLISH_TOKEN secret (Authorization: Bearer <token>).
 // If PUBLISH_TOKEN is not set (local dev), auth checks are bypassed — see README.
 import { renderPageFromMd } from "./markdown.js";
+import { OG_PNG_B64 } from "./ogimage.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -80,7 +81,7 @@ async function publishPage(request, env) {
   if (md !== null) {
     // md 原稿が正。見た目は Yomite 側の統一テンプレートで描き、描画結果を .html に、
     // 原稿そのものを .md に保存する (再編集は .md から行う)。
-    html = renderPageFromMd({ title, project, summary, decisionPoints: decision_points, md });
+    html = renderPageFromMd({ title, project, summary, decisionPoints: decision_points, md, slug });
     await env.PAGES_BUCKET.put(`pages/${slug}.md`, md, {
       httpMetadata: { contentType: "text/markdown; charset=utf-8" },
     });
@@ -273,6 +274,14 @@ const READER_HTML = `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Yomite</title>
+<meta name="description" content="調査・報告・判断の置き場">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Yomite">
+<meta property="og:title" content="Yomite">
+<meta property="og:description" content="調査・報告・判断の置き場">
+<meta property="og:url" content="https://yomite.void2610.workers.dev/">
+<meta property="og:image" content="https://yomite.void2610.workers.dev/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <style>
 :root{color-scheme:light dark}
 *{box-sizing:border-box}
@@ -653,6 +662,10 @@ export default {
       }
       if (request.method === "GET" && path === "/kit/review.js") {
         return new Response(REVIEW_JS, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" } });
+      }
+      if (request.method === "GET" && path === "/og.png") {
+        const bin = Uint8Array.from(atob(OG_PNG_B64), (c) => c.charCodeAt(0));
+        return new Response(bin, { headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" } });
       }
       if (request.method === "GET" && path === "/kit/report.css") {
         return new Response(REPORT_CSS, { headers: { "content-type": "text/css; charset=utf-8", "cache-control": "no-cache" } });
