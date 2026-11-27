@@ -1,6 +1,6 @@
 // Yomite 判断キット — スライド29〜33 の判断UIの振る舞い
 // ・各 .rv-item 内の .rv-opt は単一選択。選択中は青グラデーション (CSS 側)。
-// ・data-recommend の付いた選択肢は初期選択される (推奨を反映した状態で見せる)。
+// ・data-recommend の付いた選択肢は薄い黄色で示すだけ。選択 (青) とは色を分ける。
 // ・返事をしなければ OK: 未操作の項目は推奨がそのままコピー結果に入る。
 //   推奨のない項目は、選択もコメントも無ければコピーに含まれない。
 // ・「選んだ結果をまとめてコピー」: 選んだ項目とコメントだけを1行ずつ
@@ -18,7 +18,6 @@
   items.forEach(function (item) {
     var opts = Array.prototype.slice.call(item.querySelectorAll(".rv-opt"));
     opts.forEach(function (opt) {
-      if (opt.hasAttribute("data-recommend")) opt.classList.add("sel");
       opt.addEventListener("click", function () {
         opts.forEach(function (o) { o.classList.remove("sel"); });
         opt.classList.add("sel");
