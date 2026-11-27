@@ -3,6 +3,7 @@
 // UI は講演「認知負荷の減らし方」の HTML共有くん (スライド12・21) の配置に合わせたもの。
 // Publish & inbox-fetch require the PUBLISH_TOKEN secret (Authorization: Bearer <token>).
 // If PUBLISH_TOKEN is not set (local dev), auth checks are bypassed — see README.
+import { renderPageFromMd } from "./markdown.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -71,9 +72,19 @@ async function publishPage(request, env) {
   if (!checkToken(request, env)) return json({ error: "unauthorized" }, 401);
   let body;
   try { body = await request.json(); } catch { return json({ error: "invalid json" }, 400); }
-  const { title, project, summary, decision_points, html } = body || {};
-  if (!title || !html) return json({ error: "title and html are required" }, 400);
+  const { title, project, summary, decision_points } = body || {};
+  const md = body && typeof body.md === "string" ? body.md : null;
+  let html = body && typeof body.html === "string" ? body.html : null;
+  if (!title || (!html && md === null)) return json({ error: "title and html (or md) are required" }, 400);
   const slug = body.slug ? String(body.slug).replace(/[^a-z0-9-]/gi, "-").toLowerCase() : makeSlug(title);
+  if (md !== null) {
+    // md 原稿が正。見た目は Yomite 側の統一テンプレートで描き、描画結果を .html に、
+    // 原稿そのものを .md に保存する (再編集は .md から行う)。
+    html = renderPageFromMd({ title, project, summary, decisionPoints: decision_points, md });
+    await env.PAGES_BUCKET.put(`pages/${slug}.md`, md, {
+      httpMetadata: { contentType: "text/markdown; charset=utf-8" },
+    });
+  }
   await env.PAGES_BUCKET.put(`pages/${slug}.html`, html, {
     httpMetadata: { contentType: "text/html; charset=utf-8" },
   });
@@ -84,7 +95,16 @@ async function publishPage(request, env) {
        summary=excluded.summary, decision_points=excluded.decision_points,
        updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')`
   ).bind(slug, title, project || "未分類", summary || "", decision_points || "").run();
-  return json({ slug, url: `/p/${slug}` }, 201);
+  return json({ slug, url: `/p/${slug}`, format: md !== null ? "md" : "html" }, 201);
+}
+
+// md 原稿の原文 (再編集用)。md で公開されたページだけに存在する。
+async function serveSource(slug, env) {
+  const obj = await env.PAGES_BUCKET.get(`pages/${slug}.md`);
+  if (!obj) return new Response("no markdown source for this page", { status: 404 });
+  return new Response(obj.body, {
+    headers: { "content-type": "text/markdown; charset=utf-8" },
+  });
 }
 
 // 公開ページから一覧へ戻る導線。テンプレート側に href="/" のリンク (パンくず/末尾の戻るリンク)
@@ -616,6 +636,9 @@ export default {
       }
       if (request.method === "GET" && path.startsWith("/p/")) {
         return servePage(decodeURIComponent(path.slice(3)), env);
+      }
+      if (request.method === "GET" && path.startsWith("/src/")) {
+        return serveSource(decodeURIComponent(path.slice(5)), env);
       }
       if (request.method === "GET" && path.startsWith("/media/")) {
         return serveMedia(decodeURIComponent(path.slice(7)), env);
