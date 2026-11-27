@@ -22,9 +22,82 @@
       opt.addEventListener("click", function () {
         opts.forEach(function (o) { o.classList.remove("sel"); });
         opt.classList.add("sel");
+        save(item);
       });
     });
   });
+  // サーバー保存: 選択とコメントを Yomite サーバー (D1) へ送り、開いたときに復元する。
+  // コピーバーは従来どおり手元の控えとして残す。
+  var slugMatch = location.pathname.match(/^\/p\/(.+)$/);
+  var pageSlug = slugMatch ? decodeURIComponent(slugMatch[1]) : "";
+  function questionOf(item) {
+    var q = item.getAttribute("data-q") || "";
+    if (!q) {
+      var h = item.querySelector(".rv-q,h3");
+      q = h ? h.textContent.replace(/\s+/g, " ").trim() : "項目";
+    }
+    return q;
+  }
+  function note(item, msg) {
+    var n = item.querySelector(".rv-note");
+    if (!n) {
+      n = document.createElement("div");
+      n.className = "rv-note";
+      item.appendChild(n);
+    }
+    n.textContent = msg;
+  }
+  var saveTimers = {};
+  function save(item) {
+    if (!pageSlug) return;
+    var sel = item.querySelector(".rv-opt.sel");
+    var ta = item.querySelector(".rv-comment");
+    var st = {
+      question: questionOf(item),
+      choice: sel ? textOf(sel) : "",
+      comment: ta ? ta.value.trim() : "",
+    };
+    clearTimeout(saveTimers[st.question]);
+    saveTimers[st.question] = setTimeout(function () {
+      fetch("/api/answers/" + encodeURIComponent(pageSlug), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(st),
+      })
+        .then(function (r) { if (r.ok) note(item, "サーバーに保存しました ✓"); })
+        .catch(function () {});
+    }, 350);
+  }
+  items.forEach(function (item) {
+    var ta = item.querySelector(".rv-comment");
+    if (ta) {
+      ta.addEventListener("change", function () { save(item); });
+      ta.addEventListener("blur", function () { save(item); });
+    }
+  });
+  if (pageSlug) {
+    fetch("/api/answers/" + encodeURIComponent(pageSlug))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !data.answers) return;
+        var byQ = {};
+        data.answers.forEach(function (a) { byQ[a.question] = a; });
+        items.forEach(function (item) {
+          var a = byQ[questionOf(item)];
+          if (!a) return;
+          if (a.choice) {
+            Array.prototype.slice.call(item.querySelectorAll(".rv-opt")).forEach(function (o) {
+              o.classList.toggle("sel", textOf(o) === a.choice);
+            });
+          }
+          var ta = item.querySelector(".rv-comment");
+          if (ta && a.comment) ta.value = a.comment;
+          if (a.choice || a.comment) note(item, "サーバーに保存しました ✓");
+        });
+      })
+      .catch(function () {});
+  }
+
   function collect() {
     var lines = [];
     items.forEach(function (item) {
