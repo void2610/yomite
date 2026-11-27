@@ -384,18 +384,45 @@ textarea:focus,input[type="text"]:focus,select:focus{background:#0d223a;border-c
 .ib-item .done,.ib-item .rec{background:#0b2c53;color:#3ea8ff}
 .empty{color:#7a9cc6}
 }
+
+/* ヘッダー作り直し (zenn 型: 青ロゴ + 常時表示の検索 + テキスト/プライマリボタン) */
+.hrow{height:64px;padding:0 20px;flex-wrap:nowrap}
+.logo{color:#3ea8ff;font-size:25px}
+#searchRow{display:flex;align-items:center;gap:7px;background:#f1f5f9;border-radius:10px;padding:0 13px;height:40px;width:min(430px,44vw)}
+#searchRow .sicon{font-size:13px;opacity:.5}
+#searchRow input{flex:1;background:transparent;border:none;outline:none;font-size:14.5px;font-family:inherit;color:rgba(0,0,0,.82);min-width:0;width:100%}
+.hicons{gap:6px}
+.hbtn{background:transparent;border:none;color:#65717b;font-size:14px;font-weight:600;padding:8px 10px;border-radius:7px}
+.hbtn:hover{color:#0f83fd;border:none;background:transparent}
+#btnInbox{position:relative;background:#3ea8ff;color:#fff;padding:9px 16px}
+#btnInbox:hover{background:#0f83fd;color:#fff}
+#btnInbox .dot{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:#e5534b}
+#btnSearch{display:none}
+#chips{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 6px}
+@media (max-width:820px){
+.hrow{flex-wrap:wrap;height:auto;padding:10px 16px}
+#searchRow{display:none;order:3;flex-basis:100%;width:100%}
+#searchRow.open{display:flex}
+#btnSearch{display:inline-block}
+}
+@media (prefers-color-scheme: dark){
+.logo{color:#3ea8ff}
+#searchRow{background:#081d35}
+#searchRow input{color:#ecf5ff}
+.hbtn{color:#a4bcd5}
+#btnInbox{background:#3ea8ff;color:#fff}
+}
 </style></head><body>
 <header>
 <div class="hrow"><a class="logo" href="/" title="トップ（最新の状態で開き直す）">Yomite</a>
+<div id="searchRow" class="open"><span class="sicon">🔍</span><input type="search" id="q" placeholder="記事を検索"></div>
 <div class="hicons">
 <button class="hbtn" id="btnSearch" title="検索">🔍</button>
-<button class="hbtn" id="btnAll" title="絞り込みを解除してすべて表示">↺</button>
-<button class="hbtn" id="btnInbox" title="インボックス">✉️<span class="dot" id="inboxDot" hidden></span></button>
+<button class="hbtn" id="btnAll" title="絞り込みを解除してすべて表示">すべて表示</button>
+<button class="hbtn" id="btnInbox" title="インボックス">Muse に依頼<span class="dot" id="inboxDot" hidden></span></button>
 </div></div>
-<div id="searchRow"><input type="search" id="q" placeholder="検索（タイトル・概要・案件）"></div>
-<div id="chips"></div>
 </header>
-<main><div id="list">読み込み中…</div>
+<main><div id="chips"></div><div id="list">読み込み中…</div>
 <section class="inbox" id="inbox">
 <div class="ib-head"><button class="ib-back" id="ibTop" title="一覧の先頭へ戻る">‹</button><span class="t">インボックス</span><button id="ibReload" title="更新">↻</button></div>
 <div class="ib-sec"><span class="t">Museへの依頼</span><span class="line"></span><span class="pill" id="pendCount">0件</span></div>
