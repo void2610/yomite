@@ -418,7 +418,6 @@ textarea:focus,input[type="text"]:focus,select:focus{background:#0d223a;border-c
 <div id="searchRow" class="open"><span class="sicon">🔍</span><input type="search" id="q" placeholder="記事を検索"></div>
 <div class="hicons">
 <button class="hbtn" id="btnSearch" title="検索">🔍</button>
-<button class="hbtn" id="btnAll" title="絞り込みを解除してすべて表示">すべて表示</button>
 <button class="hbtn" id="btnInbox" title="インボックス">Muse に依頼<span class="dot" id="inboxDot" hidden></span></button>
 </div></div>
 </header>
@@ -560,7 +559,6 @@ async function load(){
 }
 var timer;qEl.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(render,200)});
 document.getElementById('btnSearch').addEventListener('click',function(){var r=document.getElementById('searchRow');var open=r.classList.toggle('open');if(open)qEl.focus();else if(qEl.value){qEl.value='';render()}});
-document.getElementById('btnAll').addEventListener('click',function(){chipSel='すべて';qEl.value='';document.getElementById('searchRow').classList.remove('open');render();window.scrollTo({top:0,behavior:'smooth'})});
 document.getElementById('btnInbox').addEventListener('click',function(){document.getElementById('inbox').scrollIntoView({behavior:'smooth'})});
 /* --- inbox (スライド21) --- */
 var histEl={pend:document.getElementById('pendingList'),done:document.getElementById('doneList')};
