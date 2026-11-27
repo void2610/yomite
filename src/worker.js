@@ -662,7 +662,7 @@ export default {
       if (request.method === "GET" && path === "/kit/review.js") {
         return new Response(REVIEW_JS, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" } });
       }
-      if (request.method === "GET" && path === "/og.png") {
+      if ((request.method === "GET" || request.method === "HEAD") && path === "/og.png") {
         const obj = await env.PAGES_BUCKET.get("assets/og.png");
         if (!obj) return new Response("not found", { status: 404 });
         return new Response(obj.body, { headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" } });
