@@ -1,1 +1,9 @@
-<div class="rpt-flow"><span class="rpt-step">md で書く</span><span class="rpt-arrow">→</span><span class="rpt-step">publish CLI が部品を展開</span><span class="rpt-arrow">→</span><span class="rpt-step">Yomite が統一デザインで描画</span><span class="rpt-arrow">→</span><span class="rpt-step">原稿は /src/ で取り出せる</span></div>
+<div class="rpt-flow">
+  <div class="box"><div class="when">書く</div><div class="what">md で書く</div><div class="sub">本文と独自形式だけ</div></div>
+  <div class="arr">▶</div>
+  <div class="box"><div class="when">送る</div><div class="what">publish CLI が部品を展開</div><div class="sub">src 読み込みはここで解決</div></div>
+  <div class="arr">▶</div>
+  <div class="box"><div class="when">描く</div><div class="what">Yomite が統一デザインで描画</div><div class="sub">目次も自動で付く</div></div>
+  <div class="arr">▶</div>
+  <div class="box hot"><div class="when">残る</div><div class="what">原稿は /src/ で取り出せる</div><div class="sub">md のまま保存</div></div>
+</div>
