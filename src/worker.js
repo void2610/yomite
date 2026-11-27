@@ -412,6 +412,55 @@ textarea:focus,input[type="text"]:focus,select:focus{background:#0d223a;border-c
 .hbtn{color:#a4bcd5}
 #btnInbox{background:#3ea8ff;color:#fff}
 }
+
+/* インボックス作り直し (zenn の階層: 見出し+グレーの件数 / 履歴は罫線区切り+状態ピル) */
+.inbox{padding:26px 28px}
+.ib-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.ib-head .t{font-size:20px;font-weight:800;color:#162c49}
+.ib-actions{display:flex;gap:4px}
+.ib-back{background:none;border:none;color:#65717b;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;padding:6px 8px}
+.ib-back:hover{color:#0f83fd}
+.ib-sec{display:flex;align-items:baseline;gap:9px;background:transparent;padding:0;margin:0 0 12px;border-radius:0}
+.ib-sec .t{font-size:15.5px;font-weight:700;color:rgba(0,0,0,.82)}
+.ib-sec .cnt{font-size:13px;color:#8f9faa}
+.compose{background:transparent;padding:0;margin:0;border-radius:0}
+.compose textarea{min-height:96px;resize:vertical;line-height:1.65}
+.compose select{margin-top:10px}
+.chipfile{background:#f0f7ff;color:#0f83fd;border:none;border-radius:99rem;padding:4px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px}
+.ib-btns{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.btn-img{background:#fff;border:1px solid #d6e3ed;color:#65717b;border-radius:7px;padding:9px 15px;font-size:13.5px;font-weight:600}
+.btn-img:hover{border-color:#3ea8ff;color:#0f83fd}
+.btn-send{padding:10px 24px}
+#inboxMsg{font-size:13.5px;color:#0f83fd;min-height:20px;margin-top:10px}
+.ib-note{font-size:12.5px;color:#8f9faa;margin-top:2px}
+#pendingList{margin-top:20px}
+.ib-item{border-top:1px solid #edf2f7;padding:15px 0}
+.ib-item .b{font-size:15px;color:rgba(0,0,0,.82);line-height:1.65}
+.ib-item .m{font-size:13px;color:#8f9faa;margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ib-item img{max-width:100%;border-radius:10px;margin-top:9px}
+.st{border-radius:99rem;padding:2px 10px;font-size:12px;font-weight:700}
+.st.wait{background:#fdf3e0;color:#9a6a00}
+.st.done{background:#f0f7ff;color:#0f83fd}
+details.done{margin-top:8px}
+details.done summary{cursor:pointer;font-size:14px;font-weight:600;color:#65717b;padding:10px 0;list-style:none}
+details.done summary:hover{color:#0f83fd}
+details.done .ib-item .b{color:#65717b}
+.inbox .empty{padding:22px 0;font-size:13.5px}
+@media (prefers-color-scheme: dark){
+.ib-head .t{color:#ecf5ff}
+.ib-sec .t{color:#ecf5ff}
+.ib-sec .cnt{color:#7a9cc6}
+.ib-back{color:#a4bcd5}
+.chipfile{background:#0b2c53;color:#3ea8ff}
+.btn-img{background:transparent;border-color:#344c69;color:#a4bcd5}
+.ib-item{border-top-color:#0b2c53}
+.ib-item .b{color:#ecf5ff}
+.ib-item .m{color:#7a9cc6}
+.st.wait{background:#3a2f10;color:#e9ad24}
+.st.done{background:#0b2c53;color:#3ea8ff}
+details.done summary{color:#a4bcd5}
+details.done .ib-item .b{color:#a4bcd5}
+}
 </style></head><body>
 <header>
 <div class="hrow"><a class="logo" href="/" title="トップ（最新の状態で開き直す）">Yomite</a>
@@ -423,15 +472,15 @@ textarea:focus,input[type="text"]:focus,select:focus{background:#0d223a;border-c
 </header>
 <main><div id="chips"></div><div id="list">読み込み中…</div>
 <section class="inbox" id="inbox">
-<div class="ib-head"><button class="ib-back" id="ibTop" title="一覧の先頭へ戻る">‹</button><span class="t">インボックス</span><button id="ibReload" title="更新">↻</button></div>
-<div class="ib-sec"><span class="t">Museへの依頼</span><span class="line"></span><span class="pill" id="pendCount">0件</span></div>
+<div class="ib-head"><span class="t">インボックス</span><span class="ib-actions"><button class="ib-back" id="ibTop" title="一覧の先頭へ戻る">一覧の先頭へ</button><button class="ib-back" id="ibReload" title="更新">更新</button></span></div>
+<div class="ib-sec"><span class="t">Muse への依頼</span><span class="cnt" id="pendCount">0件</span></div>
 <div class="compose">
 <textarea id="inboxBody" placeholder="依頼を1つ書いてください"></textarea>
 <select id="inboxProject"><option value="">プロジェクト名（任意）</option></select>
 <div><button type="button" class="chipfile" id="imgName" hidden title="タップで添付を外す"></button></div>
 <div class="ib-btns">
-<button class="btn-img" id="imgBtn">🖼 画像</button>
-<button class="btn-send" id="inboxSend">頼む →</button>
+<button class="btn-img" id="imgBtn">画像を添付</button>
+<button class="btn-send" id="inboxSend">依頼を送る</button>
 </div>
 <input type="file" id="imgFile" accept="image/*" hidden>
 <div class="msg" id="inboxMsg"></div>
@@ -566,8 +615,9 @@ var imgKey=null;
 function ibItem(i,done){
   var img=i.image_key?'<img src="/media/'+esc(i.image_key)+'" alt="">':'';
   var proj=i.project?' ・ '+esc(i.project):'';
+  var st=done?'<span class="st done">受付済み</span>':'<span class="st wait">取り込み待ち</span>';
   return '<div class="ib-item"><div class="b">'+esc(i.body)+'</div>'+img
-    +'<div class="m">'+relTime(i.created_at)+proj+' ・ '+(done?'✅ 受付済み':'⏳ 取り込み待ち')+'</div></div>';
+    +'<div class="m">'+relTime(i.created_at)+proj+' '+st+'</div></div>';
 }
 async function loadInboxHistory(){
   try{
