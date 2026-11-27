@@ -4,7 +4,6 @@
 // Publish & inbox-fetch require the PUBLISH_TOKEN secret (Authorization: Bearer <token>).
 // If PUBLISH_TOKEN is not set (local dev), auth checks are bypassed — see README.
 import { renderPageFromMd } from "./markdown.js";
-import { OG_PNG_B64 } from "./ogimage.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -664,8 +663,9 @@ export default {
         return new Response(REVIEW_JS, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" } });
       }
       if (request.method === "GET" && path === "/og.png") {
-        const bin = Uint8Array.from(atob(OG_PNG_B64), (c) => c.charCodeAt(0));
-        return new Response(bin, { headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" } });
+        const obj = await env.PAGES_BUCKET.get("assets/og.png");
+        if (!obj) return new Response("not found", { status: 404 });
+        return new Response(obj.body, { headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" } });
       }
       if (request.method === "GET" && path === "/kit/report.css") {
         return new Response(REPORT_CSS, { headers: { "content-type": "text/css; charset=utf-8", "cache-control": "no-cache" } });
