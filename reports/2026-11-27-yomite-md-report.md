@@ -19,29 +19,22 @@
 
 :::html src="yomite-md-flow.html"
 
-## 独自形式は3種類
+## 独自形式は4種類
 
 | 形式 | 役割 |
 | --- | --- |
 | `:::html` … `:::` | そのまま HTML を埋め込む（判断キットや流れ図用） |
 | `:::html src="部品.html"` | 別ファイルの HTML 部品を読み込む（公開時に展開） |
 | `:::decision` … `:::` | 判断ポイントの赤枠。中身は md で書ける |
+| `:::ask 質問` … `:::` | 判断キット。`- 選択肢` を並べるだけ。末尾の (おすすめ) が推奨になる |
 
 通常の md 記法（見出し・表・リスト・引用・コード・リンク・画像）と `==ハイライト==` もそのまま使えます。
 
-## 判断はこの場で（判断キットの実物）
+## 判断はこの場で（判断キットも md だけ）
 
-:::html
-<div class="rv-item" data-q="今後の報告は md で書いて Yomite へ出す運用でよいか">
-<div class="rv-num">判</div>
-<h3>今後の報告の出し方<span class="rv-badge">判断</span></h3>
-<div class="rv-q">今後の報告は md で書いて Yomite へ出す運用でよいか</div>
-<div class="rv-choices">
-<button class="rv-opt" data-recommend>このまま進める<span class="rv-rec">おすすめ</span></button>
-<button class="rv-opt">まだ HTML のほうがよい</button>
-</div>
-<textarea class="rv-comment" placeholder="コメント（任意）"></textarea>
-</div>
+:::ask 今後の報告は md で書いて Yomite へ出す運用でよいか
+- このまま進める (おすすめ)
+- まだ HTML のほうがよい
 :::
 
 ## 選択はサーバーに残ります

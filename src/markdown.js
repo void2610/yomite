@@ -5,6 +5,7 @@
 //   :::html src="x.html" … 外部 HTML ファイルの読み込み (publish CLI が送信前に中身へ展開する。
 //                          Worker 単体で受けた場合は未展開である旨の注記になる)
 //   :::decision        … 次の ::: までを判断ポイントの枠で表示する (中身は md として描く)
+//   :::ask 質問文      … 判断キット。次の ::: まで `- 選択肢` を並べ、末尾の (おすすめ) が推奨になる
 //
 // md の先頭の見出し (# タイトル) は、ページの h1 が別に付くため取り除く。
 // ## が節見出しになり、目次は ## が3つ以上あるとき自動で付く。
@@ -89,6 +90,44 @@ export function renderMarkdown(md) {
       while (i < lines.length && !/^:::\s*$/.test(lines[i])) { buf.push(lines[i]); i++; }
       i++; // 閉じ :::
       pass1.push(stash(buf.join("\n")));
+      continue;
+    }
+    const askOpen = line.match(/^:::ask(?:\s+(.*))?$/);
+    if (askOpen) {
+      const buf = [];
+      i++;
+      while (i < lines.length && !/^:::\s*$/.test(lines[i])) { buf.push(lines[i]); i++; }
+      i++;
+      const qParts = [];
+      if (askOpen[1]) qParts.push(askOpen[1].trim());
+      const opts = [];
+      const notes = [];
+      let seenOpt = false;
+      for (const b of buf) {
+        const t = b.trim();
+        if (!t) continue;
+        const om = t.match(/^[-*]\s+(.*)$/);
+        if (om) {
+          seenOpt = true;
+          let label = om[1].trim();
+          let rec = false;
+          if (/[（(]おすすめ[）)]\s*$/.test(label) || /\*\s*$/.test(label)) {
+            rec = true;
+            label = label.replace(/[（(]おすすめ[）)]\s*$/, "").replace(/\*\s*$/, "").trim();
+          }
+          opts.push({ label, rec });
+        } else if (!seenOpt) {
+          qParts.push(t);
+        } else {
+          notes.push(t);
+        }
+      }
+      const q = qParts.join(" ");
+      const optHtml = opts.map((o) => o.rec
+        ? `<button class="rv-opt" data-recommend>${inline(o.label, stash)}<span class="rv-rec">おすすめ</span></button>`
+        : `<button class="rv-opt">${inline(o.label, stash)}</button>`).join("");
+      const noteHtml = notes.length ? `<p>${notes.map((n) => inline(n, stash)).join("<br>")}</p>` : "";
+      pass1.push(stash(`<div class="rv-item" data-q="${esc(q)}"><div class="rv-q">${inline(q, stash)}</div><div class="rv-choices">${optHtml}</div>${noteHtml}<textarea class="rv-comment" placeholder="コメント（任意）"></textarea></div>`));
       continue;
     }
     if (/^:::decision\s*$/.test(line)) {
