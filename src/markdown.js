@@ -11,9 +11,6 @@
 // ## が節見出しになり、目次は ## が3つ以上あるとき自動で付く。
 
 export const MD_CSS = `
-.ymd-bar{background:var(--rpt-card);border-bottom:1px solid var(--rpt-border)}
-.ymd-bar-in{max-width:860px;margin:0 auto;padding:0 18px;height:54px;display:flex;align-items:center}
-.ymd-logo{color:#3ea8ff;font-size:21px;font-weight:800;text-decoration:none;letter-spacing:.2px}
 .ymd-ahead{margin:4px 0 30px}
 .ymd-bigemo{font-size:54px;line-height:1.1;margin-bottom:12px}
 .ymd-ahead h1{font-size:30px;line-height:1.4;color:var(--rpt-heading);margin:0 0 14px;font-weight:800}
@@ -275,7 +272,7 @@ ${slug ? `<meta property="og:image" content="https://yomite.void2610.workers.dev
 <link rel="stylesheet" href="/kit/report.css">
 <link rel="stylesheet" href="/kit/review.css">
 <style>${MD_CSS}</style>
-</head><body><header class="ymd-bar"><div class="ymd-bar-in"><a class="ymd-logo" href="/">Yomite</a></div></header><div class="rpt ymd">
+</head><body><div class="rpt ymd">
 <div class="ymd-ahead">
 ${emoji ? `<div class="ymd-bigemo">${esc(emoji)}</div>` : ""}
 <h1>${esc(title)}</h1>
