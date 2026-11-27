@@ -313,29 +313,31 @@ input[type=search]{width:100%;padding:9px 12px;border-radius:10px;border:1px sol
 .chip.sel .rec{color:#ffe9a8}
 main{padding:6px 16px 48px;max-width:980px;margin:0 auto}
 .sec-head{display:flex;align-items:baseline;gap:12px;margin:24px 0 10px}
-.sec-head .lbl{font-weight:700;color:#12294d}
+.sec-head .lbl{font-weight:700;color:#12294d;font-size:17px}
 .sec-head .line{flex:1;border-top:1px solid #c9d8e4}
 .sec-head .cnt{font-size:12px;color:#7d8fa1}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:720px){.grid{grid-template-columns:1fr}}
-.pcard{background:#fff;border-radius:14px;padding:13px 15px 9px;box-shadow:0 2px 10px rgba(30,60,90,.07)}
+.pcard{background:#fff;border-radius:14px;padding:16px 18px 12px;box-shadow:0 2px 10px rgba(30,60,90,.07)}
 .pcard .ph{display:flex;align-items:flex-start;gap:7px}
 .pcard .pt{font-weight:800;color:#12294d;font-size:15.5px;flex:1;line-height:1.4}
-.pcard .pc{font-size:12px;color:#8a9bab;white-space:nowrap;margin-top:2px}
+.pcard .pc{font-size:12px;color:#5b7186;white-space:nowrap;margin-top:2px}
 .icobtn{border:0;background:transparent;cursor:pointer;font-size:15px;padding:2px 3px;line-height:1}
 .icobtn.pin{filter:grayscale(1) opacity(.45)}
 .icobtn.pin.on{filter:none}
 .icobtn.star{color:#b9c6d2}
 .icobtn.star.on{color:#f0a500}
-.prow{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid #eef2f6}
-.prow .ud{flex:none;width:8px;height:8px;border-radius:50%;background:#17a2b8}
+.prow{display:flex;align-items:flex-start;gap:9px;padding:11px 0;border-top:1px solid #e3ebf2}
+.prow .ud{flex:none;width:9px;height:9px;border-radius:50%;background:#17a2b8;margin-top:7px}
 .prow .ud.read{background:transparent}
-.prow a.tt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;color:inherit;text-decoration:none;padding:3px 0}
-.prow.read a.tt{color:#93a3b3}
-.prow .tm{flex:none;font-size:12px;color:#93a3b3}
+.prow .tmain{flex:1;min-width:0}
+.prow a.tt{display:block;font-size:15.5px;font-weight:600;line-height:1.45;color:inherit;text-decoration:none}
+.prow .tsum{font-size:13px;color:#5b7186;line-height:1.55;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.prow.read a.tt{color:#63798e;font-weight:400}
+.prow .tm{flex:none;font-size:12px;color:#5b7186;margin-top:4px}
 .prow .ppin{flex:none}
 .more{display:block;width:100%;text-align:left;border:0;background:transparent;color:#0e7ea4;font-size:13px;padding:7px 0 4px;cursor:pointer}
-.dec{font-size:12.5px;color:#7a5b00;background:#fff6cf;border-radius:8px;padding:6px 9px;margin:7px 0 5px;white-space:pre-wrap}
+.dec{font-size:13px;color:#7a5b00;background:#fff6cf;border-left:3px solid #e6c34a;border-radius:8px;padding:8px 10px;margin:8px 0 6px;white-space:pre-wrap;line-height:1.55}
 section.inbox{margin-top:38px;background:#f7fafc;border:1px solid #d8e2ec;border-radius:16px;padding:16px}
 .ib-head{display:flex;align-items:center;gap:8px}
 .ib-head .t{font-weight:800;color:#12294d;font-size:17px}
@@ -378,11 +380,11 @@ input[type=search]{background:#16222f;border-color:#2b405a}
 .sec-head .cnt{color:#7e93a8}
 .pcard{background:#152231;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 .pcard .pt{color:#eaf3fb}
-.pcard .pc{color:#7e93a8}
+.pcard .pc{color:#93a9bf}
 .icobtn.star{color:#54708c}
 .prow{border-top-color:#22344a}
 .prow.read a.tt{color:#63798e}
-.prow .tm{color:#63798e}
+.prow .tm{color:#93a9bf}
 .more{color:#45bcd8}
 .dec{color:#f0d48a;background:#40360f}
 section.inbox{background:#101b29;border-color:#24344a}
@@ -399,6 +401,7 @@ select{background:#16222f;border-color:#2b405a;color:#c9d8e6}
 .msg{color:#6db3f2}
 .ib-item{background:#152231;border-color:#24344a}
 .ib-item .m{color:#7e93a8}
+.prow .tsum{color:#93a9bf}
 .empty{color:#7e93a8}
 details.done{border-top-color:#24344a}
 details.done summary{color:#b8cbdd}
@@ -513,7 +516,8 @@ function render(){
       var rows=items.map(function(p,i){
         var row='<div class="prow'+(p.read_at?' read':'')+'">'
           +'<span class="ud'+(p.read_at?' read':'')+'"></span>'
-          +'<a class="tt" href="/p/'+esc(p.slug)+'" data-slug="'+esc(p.slug)+'">'+esc(p.title)+'</a>'
+          +'<div class="tmain"><a class="tt" href="/p/'+esc(p.slug)+'" data-slug="'+esc(p.slug)+'">'+esc(p.title)+'</a>'
+          +(p.summary?'<div class="tsum">'+esc(p.summary)+'</div>':'')+'</div>'
           +'<span class="tm">'+relTime(p.created_at)+'</span>'
           +'<button class="icobtn pin ppin'+(p.pinned?' on':'')+'" data-pinpage="'+esc(p.slug)+'" title="ページをピン留め">📌</button></div>';
         if(p.decision_points)row+='<div class="dec">⚠ 判断ポイント: '+esc(p.decision_points)+'</div>';
