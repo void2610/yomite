@@ -80,7 +80,9 @@ async function publishPage(request, env) {
   if (md !== null) {
     // md 原稿が正。見た目は Yomite 側の統一テンプレートで描き、描画結果を .html に、
     // 原稿そのものを .md に保存する (再編集は .md から行う)。
-    html = renderPageFromMd({ title, project, summary, decisionPoints: decision_points, md, slug, emoji: emoji || '' });
+    const prev = await env.DB.prepare("SELECT created_at FROM pages WHERE slug = ?").bind(slug).first();
+    const dateStr = prev && prev.created_at ? String(prev.created_at).slice(0, 10) : undefined;
+    html = renderPageFromMd({ title, project, summary, decisionPoints: decision_points, md, slug, emoji: emoji || '', dateStr });
     await env.PAGES_BUCKET.put(`pages/${slug}.md`, md, {
       httpMetadata: { contentType: "text/markdown; charset=utf-8" },
     });

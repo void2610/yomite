@@ -11,7 +11,19 @@
 // ## が節見出しになり、目次は ## が3つ以上あるとき自動で付く。
 
 export const MD_CSS = `
-.ymd-emo{margin-right:10px}
+.ymd-bar{background:var(--rpt-card);border-bottom:1px solid var(--rpt-border)}
+.ymd-bar-in{max-width:860px;margin:0 auto;padding:0 18px;height:54px;display:flex;align-items:center;justify-content:space-between}
+.ymd-logo{color:#3ea8ff;font-size:21px;font-weight:800;text-decoration:none;letter-spacing:.2px}
+.ymd-bar-link{color:var(--rpt-faint);font-size:13.5px;text-decoration:none}
+.ymd-bar-link:hover{color:var(--rpt-accent);text-decoration:underline;text-underline-offset:3px}
+.ymd-ahead{margin:4px 0 30px}
+.ymd-bigemo{font-size:54px;line-height:1.1;margin-bottom:12px}
+.ymd-ahead h1{font-size:30px;line-height:1.4;color:var(--rpt-heading);margin:0 0 14px;font-weight:800}
+.ymd-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ymd-chip{background:var(--rpt-box);border:1px solid var(--rpt-border);border-radius:999px;padding:2px 13px;font-size:13px;color:var(--rpt-heading)}
+.ymd-date{color:var(--rpt-muted);font-size:13.5px}
+.ymd-lead{color:var(--rpt-sub);font-size:15.5px;line-height:1.85;margin:16px 0 0}
+@media(max-width:640px){.ymd-ahead h1{font-size:24px}.ymd-bigemo{font-size:44px}}
 .ymd h3{font-size:17px;color:var(--rpt-heading);margin:22px 0 6px}
 .ymd h4{font-size:15px;color:var(--rpt-heading);margin:18px 0 4px}
 .ymd p{margin:8px 0}
@@ -26,7 +38,7 @@ export const MD_CSS = `
 .ymd pre{background:var(--rpt-code-bg);border:1px solid var(--rpt-border2);border-radius:10px;padding:12px 14px;overflow-x:auto;font-size:13px;line-height:1.6}
 .ymd pre code{background:transparent;padding:0}
 .ymd th{background:var(--rpt-th-bg)}
-.ymd td.k2{font-weight:700;color:var(--rpt-heading);white-space:nowrap}
+.ymd td.k2{font-weight:700;color:var(--rpt-heading)}
 .ymd .ymd-unresolved{border:1.5px dashed #e5484d;border-radius:10px;padding:10px 14px;color:#c62f35;font-size:13px;margin:12px 0}
 `;
 
@@ -265,11 +277,13 @@ ${slug ? `<meta property="og:image" content="https://yomite.void2610.workers.dev
 <link rel="stylesheet" href="/kit/report.css">
 <link rel="stylesheet" href="/kit/review.css">
 <style>${MD_CSS}</style>
-</head><body><div class="rpt ymd">
-<div class="rpt-crumb"><a href="/">${esc(project || "未分類")}</a> ／ Yomite</div>
-<h1>${emoji ? `<span class="ymd-emo">${esc(emoji)}</span>` : ""}${esc(title)}</h1>
-${summary ? `<div class="rpt-sub">${esc(summary)}</div>` : ""}
-<div class="rpt-meta">${esc(date)} 時点の報告です。原稿は Markdown で、見た目は Yomite が統一しています。</div>
+</head><body><header class="ymd-bar"><div class="ymd-bar-in"><a class="ymd-logo" href="/">Yomite</a><a class="ymd-bar-link" href="/">記事一覧</a></div></header><div class="rpt ymd">
+<div class="ymd-ahead">
+${emoji ? `<div class="ymd-bigemo">${esc(emoji)}</div>` : ""}
+<h1>${esc(title)}</h1>
+<div class="ymd-meta"><span class="ymd-chip">${esc(project || "未分類")}</span><span class="ymd-date">${esc(date)}</span></div>
+${summary ? `<p class="ymd-lead">${esc(summary)}</p>` : ""}
+</div>
 ${decisionHtml}
 ${tocHtml}
 ${html}
