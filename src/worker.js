@@ -76,6 +76,7 @@ async function publishPage(request, env) {
   const md = body && typeof body.md === "string" ? body.md : null;
   let html = body && typeof body.html === "string" ? body.html : null;
   if (!title || (!html && md === null)) return json({ error: "title and html (or md) are required" }, 400);
+  if (!emoji || !String(emoji).trim()) return json({ error: "emoji is required: 記事の内容に合った絵文字アイコンを1つ指定してください（未指定の公開は受け付けません）" }, 400);
   const slug = body.slug ? String(body.slug).replace(/[^a-z0-9-]/gi, "-").toLowerCase() : makeSlug(title);
   if (md !== null) {
     // md 原稿が正。見た目は Yomite 側の統一テンプレートで描き、描画結果を .html に、
