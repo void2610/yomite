@@ -28,7 +28,11 @@ function opt(name) {
 const base = process.env.YOMITE_URL;
 const token = process.env.YOMITE_TOKEN;
 if (!file || !opt("title")) {
-  console.error('usage: node scripts/publish.mjs <file.md|file.html> --title "..." --project "..." [--summary "..."] [--decision "..."] [--slug "..."]');
+  console.error('usage: node scripts/publish.mjs <file.md|file.html> --title "..." --project "..." --emoji "🔬" [--summary "..."] [--decision "..."] [--slug "..."]');
+  process.exit(1);
+}
+if (!opt("emoji")) {
+  console.error("--emoji が必須です。記事の内容に合った絵文字アイコンを1つ付けてください（未指定だとデフォルトの 📄 で表示され未完成に見えます）");
   process.exit(1);
 }
 if (!base) { console.error("YOMITE_URL が未設定です"); process.exit(1); }
