@@ -59,6 +59,23 @@ if (isMd) {
   payload = { format: "html", html: raw };
 }
 
+// --images <dir>: dir 内の画像 (png/jpg/gif/webp) を記事の添付画像として一緒に送る。
+// サーバー側で assets/<slug>/<ファイル名> に保存され、md からは
+// ![alt](/media/assets/<slug>/<ファイル名>) で参照できる。
+let imagesPayload = [];
+const imagesDir = opt("images");
+if (imagesDir) {
+  const { readdir } = await import("node:fs/promises");
+  const CT = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp" };
+  for (const name of (await readdir(imagesDir)).sort()) {
+    const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
+    if (!CT[ext]) continue;
+    const buf = await readFile(join(resolve(imagesDir), name));
+    imagesPayload.push({ name, contentType: CT[ext], data: buf.toString("base64") });
+  }
+  console.error(`▸ 画像 ${imagesPayload.length} 枚を添付します (${imagesDir})`);
+}
+
 // OGP 画像 (タイトル入り) を生成して一緒に送る。失敗しても公開は続ける。
 let ogImageB64 = "";
 try {
@@ -84,6 +101,7 @@ const res = await fetch(`${base.replace(/\/$/, "")}/api/pages`, {
     ...(opt("slug") ? { slug: opt("slug") } : {}),
     ...(opt("emoji") ? { emoji: opt("emoji") } : {}),
     ...(ogImageB64 ? { og_image_b64: ogImageB64 } : {}),
+    ...(imagesPayload.length ? { images: imagesPayload } : {}),
   }),
 });
 const data = await res.json().catch(() => ({}));

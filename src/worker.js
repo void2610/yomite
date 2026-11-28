@@ -96,6 +96,22 @@ async function publishPage(request, env) {
       });
     } catch { /* OG 画像の保存失敗は公開を止めない */ }
   }
+  // 記事の添付画像: [{ name, contentType, data(base64) }] を assets/<slug>/<name> へ保存する。
+  // md からは ![alt](/media/assets/<slug>/<name>) で参照する (serveMedia が assets/ を配信する)。
+  if (Array.isArray(body.images)) {
+    const IMG_CT = { "image/png": 1, "image/jpeg": 1, "image/gif": 1, "image/webp": 1 };
+    for (const im of body.images) {
+      try {
+        if (!im || typeof im.name !== "string" || typeof im.data !== "string") continue;
+        const name = im.name.replace(/[^a-z0-9._-]/gi, "-");
+        if (!name || !IMG_CT[im.contentType] || im.data.length > 12_000_000) continue;
+        const bin = Uint8Array.from(atob(im.data), (c) => c.charCodeAt(0));
+        await env.PAGES_BUCKET.put(`assets/${slug}/${name}`, bin, {
+          httpMetadata: { contentType: im.contentType },
+        });
+      } catch { /* 1枚の保存失敗は公開を止めない */ }
+    }
+  }
   await env.PAGES_BUCKET.put(`pages/${slug}.html`, html, {
     httpMetadata: { contentType: "text/html; charset=utf-8" },
   });
@@ -227,7 +243,7 @@ async function uploadInboxImage(request, env) {
 }
 
 async function serveMedia(key, env) {
-  if (!key.startsWith("inbox/")) return new Response("not found", { status: 404 });
+  if (!key.startsWith("inbox/") && !key.startsWith("assets/")) return new Response("not found", { status: 404 });
   const obj = await env.PAGES_BUCKET.get(key);
   if (!obj) return new Response("not found", { status: 404 });
   const ct = (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream";
